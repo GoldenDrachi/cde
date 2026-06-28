@@ -1,0 +1,20 @@
+{
+    "cobblemon_move_id":  "cobblemon:earthquake",
+    "cooldown_turns":  6.0,
+    "phases":  [
+                   {
+                       "attack_type":  "AURA",
+                       "base_power":  100,
+                       "accuracy":  100,
+                       "range":  8.0,
+                       "hits_friendlies":  true,
+                       "multiple_targets":  true,
+                       "hits_vanish_types": ["GROUND"],
+                       "double_damage_on_vanish": true,
+                       "particles":  {
+                                         "type":  "explosion",
+                                         "count":  3
+                                     }
+                   }
+               ]
+}

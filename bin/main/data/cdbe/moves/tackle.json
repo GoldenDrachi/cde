@@ -1,0 +1,16 @@
+{
+    "cobblemon_move_id": "cobblemon:tackle",
+    "cooldown_turns": 1.0,
+    "phases": [
+        {
+            "attack_type": "MELEE",
+            "base_power": 40,
+            "accuracy": 100,
+            "range": 2.0,
+            "particles": {
+                "type": "sweep_attack",
+                "count": 1
+            }
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "cobblemon_move_id":  "cobblemon:dragonbreath",
+    "cooldown_turns":  5.0,
+    "phases":  [
+                   {
+                       "attack_type":  "BEAM",
+                       "base_power":  60,
+                       "accuracy":  100,
+                       "range":  15.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "paralysis",
+                                                  "duration_turns":  5.0,
+                                                  "chance": 33
+                                              }
+                                          ],
+                       "hits_friendlies":  false,
+                       "particles":  {
+                                         "type":  "magic",
+                                         "count":  10
+                                     }
+                   }
+               ]
+}

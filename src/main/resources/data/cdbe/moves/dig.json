@@ -1,0 +1,27 @@
+{
+  "cobblemon_move_id": "cobblemon:dig",
+  "cooldown_turns": 4.0,
+  "phases": [
+    {
+      "attack_type": "VANISH",
+      "vanish_type": "GROUND",
+      "attack_duration_turns": 1.0,
+      "range": 0.0,
+      "particles": {
+        "type": "block_dust:dirt",
+        "count": 20
+      }
+    },
+    {
+      "attack_type": "MELEE",
+      "chargeup_ticks": 0,
+      "base_power": 80,
+      "accuracy": 100,
+      "range": 3.0,
+      "particles": {
+        "type": "block_dust:dirt",
+        "count": 40
+      }
+    }
+  ]
+}

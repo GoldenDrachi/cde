@@ -1,0 +1,39 @@
+{
+    "cobblemon_move_id": "cobblemon:toxicspikes",
+    "cooldown_turns": 3.0,
+    "phases": [
+        {
+            "attack_type": "HAZARD",
+            "base_power": 0,
+            "accuracy": 100,
+            "range": 15.0,
+            "hazard_data": {
+                "hazard_type": "toxic_spikes",
+                "placement_range": 15.0,
+                "ring_radius": 3.5,
+                "duration_turns": -1.0,
+                "max_stacks": 2,
+                "damage_percent": 0.0,
+                "status_effect": {
+                    "type": "poison",
+                    "duration_turns": 4.0,
+                    "chance": 100
+                },
+                "fail_on_max_stacks": true,
+                "stack_status_effects": {
+                    "2": {
+                        "type": "badly_poison",
+                        "duration_turns": 4.0,
+                        "chance": 100
+                    }
+                },
+                "vanishes_when_touched_by_type": "poison",
+                "affects_flying": false
+            },
+            "particles": {
+                "type": "witch",
+                "count": 2
+            }
+        }
+    ]
+}

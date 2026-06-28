@@ -1,0 +1,27 @@
+{
+    "cobblemon_move_id":  "cobblemon:rollout",
+    "cooldown_turns":  1.0,
+    "phases":  [
+                   {
+                       "attack_type":  "DASH",
+                       "base_power":  30,
+                       "accuracy":  90,
+                       "range":  0.0,
+                       "mobility_data":  {
+                                             "dash_speed":  3.0,
+                                             "dash_range":  12.0,
+                                             "stop_on_hit":  false
+                                         },
+                       "sequential_data":  {
+                                               "multiplier":  2.0,
+                                               "max_stacks":  5,
+                                               "reset_on_max":  true,
+                                               "start_with_stack_if_status":  "defense_curl"
+                                           },
+                       "particles":  {
+                                         "type":  "sand",
+                                         "count":  5
+                                     }
+                   }
+               ]
+}

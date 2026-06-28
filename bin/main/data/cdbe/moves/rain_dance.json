@@ -1,0 +1,30 @@
+{
+    "cobblemon_move_id":  "cobblemon:raindance",
+    "cooldown_turns":  8.0,
+    "phases":  [
+                   {
+                       "attack_type":  "DOMAIN",
+                       "base_power":  0,
+                       "accuracy":  100,
+                       "range":  0.0,
+                       "domain_data":  {
+                                           "type":  "weather",
+                                           "radius":  20.0,
+                                           "duration_turns":  5.0,
+                                           "weather_condition":  "rain",
+                                           "ambient_particles":  {
+                                                                     "type":  "rain",
+                                                                     "count":  50
+                                                                 },
+                                           "elemental_modifiers":  {
+                                                                       "water":  1.5,
+                                                                       "fire":  0.5
+                                                                   }
+                                       },
+                       "particles":  {
+                                         "type":  "crit",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}

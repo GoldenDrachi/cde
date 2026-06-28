@@ -1,0 +1,24 @@
+{
+    "cobblemon_move_id":  "cobblemon:acid",
+    "cooldown_turns":  2.0,
+    "phases":  [
+                   {
+                       "attack_type":  "CONE",
+                       "base_power":  40,
+                       "accuracy":  100,
+                       "range":  12.0,
+                       "multiple_targets":  true,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "special_defense_down",
+                                                  "duration_turns":  15.0,
+                                                  "chance": 10
+                                              }
+                                          ],
+                       "particles":  {
+                                         "type":  "composter",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}

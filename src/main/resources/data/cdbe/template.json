@@ -1,0 +1,129 @@
+{
+  "cobblemon_move_id": "cobblemon:move_name",
+  "cooldown_turns": 0.0,
+  "phases": [
+    {
+      "attack_type": "SELF",
+      "attack_duration_turns": 1.0,
+      "attack_message": "is charging energy!",
+      "particles": {
+        "type": "magic",
+        "count": 1
+      }
+    },
+    {
+      "attack_type": "PROJECTILE",
+      "base_power": 90,
+      "accuracy": 100,
+      "range": 15.0,
+      "homing_strength": null,
+      "hits_friendlies": false,
+      "multiple_targets": false,
+      "is_sound_move": false,
+      "hp_cost_percent": 0.0,
+      "hp_cost_flat": 0,
+      "particles": {
+        "type": "magic",
+        "count": 5
+      },
+      "status_effects": [
+        {
+          "type": "burn",
+          "duration_turns": 3.0,
+          "chance": 0.1,
+          "immunity_cooldown_turns": null
+        }
+      ],
+      "multi_hit_data": {
+        "min_hits": 2,
+        "max_hits": 5,
+        "delay_ticks": 5
+      },
+      "power_scaling": "target_weight",
+      "sequential_data": {
+        "multiplier": 2.0,
+        "max_stacks": 5,
+        "reset_on_max": true,
+        "start_with_stack_if_status": "defense_curl"
+      },
+      "domain_data": {
+        "type": "weather",
+        "radius": 15.0,
+        "duration_turns": 5.0,
+        "weather_condition": "rain",
+        "ambient_particles": { "type": "rain", "count": 5 },
+        "tick_damage": null,
+        "stat_buffs": null,
+        "elemental_modifiers": {
+          "water": 1.5,
+          "fire": 0.5
+        }
+      },
+      "hazard_data": {
+        "hazard_type": "spikes",
+        "placement_range": 15.0,
+        "ring_radius": 5.0,
+        "duration_turns": -1.0,
+        "max_triggers": -1,
+        "max_stacks": 3,
+        "damage_percent": 12.5,
+        "damage_type": "ground",
+        "status_effect": null,
+        "vanishes_when_touched_by_type": "poison",
+        "affects_flying": false
+      },
+      "mobility_data": {
+        "dash_speed": 2.5,
+        "dash_range": 10.0,
+        "stop_on_hit": true,
+        "teleport_range": 8.0,
+        "knockback_force": 1.5,
+        "retreat_force": 1.5
+      },
+      "impact_aoe_data": {
+        "radius": 4.0,
+        "damage_falloff": false,
+        "particles": {
+          "type": "explosion",
+          "count": 20
+        }
+      },
+      "health_manipulation_data": {
+        "drain_percent": 50.0,
+        "recoil_percent": 25.0,
+        "heal_self_percent": 50.0,
+        "heal_target_percent": 0.0,
+        "cleanses_status": ["poison", "burn", "paralysis"],
+        "sacrificial": false
+      },
+      "special_state_data": {
+        "protect": {
+          "duration_turns": 1.0,
+          "chance_decay": 0.5
+        },
+        "stat_reset": true
+      },
+      "bypasses": {
+        "ignores_protect": true,
+        "breaks_protect": false,
+        "ignores_substitute": true,
+        "ignores_stat_changes": false,
+        "flat_damage": null,
+        "is_ohko": false
+      },
+      "vanish_type": null,
+      "hits_vanish_types": null,
+      "double_damage_on_vanish": false,
+      "skip_with_power_herb": false,
+      "abort_move_on_miss": false,
+      "bind_target_to_caster": false,
+      "unmount_target": false,
+      "self_status_effects": null
+    },
+    {
+      "attack_type": "SELF",
+      "attack_duration_turns": 1.0,
+      "attack_message": "must recharge!"
+    }
+  ]
+}

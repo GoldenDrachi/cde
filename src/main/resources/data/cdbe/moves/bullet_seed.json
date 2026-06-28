@@ -1,0 +1,21 @@
+{
+    "cobblemon_move_id":  "cobblemon:bulletseed",
+    "cooldown_turns":  3.0,
+    "phases":  [
+                   {
+                       "attack_type":  "PROJECTILE",
+                       "base_power":  25,
+                       "accuracy":  100,
+                       "range":  15.0,
+                       "multi_hit_data":  {
+                                              "min_hits":  2,
+                                              "max_hits":  5,
+                                              "delay_ticks":  5
+                                          },
+                       "particles":  {
+                                         "type":  "composter",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}

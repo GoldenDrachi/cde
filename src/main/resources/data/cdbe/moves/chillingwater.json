@@ -1,0 +1,24 @@
+{
+    "cobblemon_move_id":  "cobblemon:chillingwater",
+    "cooldown_turns":  5.0,
+    "phases":  [
+                   {
+                       "attack_type":  "BEAM",
+                       "base_power":  50,
+                       "accuracy":  100,
+                       "range":  15.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "accuracy_down",
+                                                  "duration_turns":  15.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "hits_friendlies":  false,
+                       "particles":  {
+                                         "type":  "splash",
+                                         "count":  10
+                                     }
+                   }
+               ]
+}

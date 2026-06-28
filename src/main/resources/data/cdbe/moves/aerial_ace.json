@@ -1,0 +1,16 @@
+{
+    "cobblemon_move_id":  "cobblemon:aerialace",
+    "cooldown_turns":  2.5,
+    "phases":  [
+                   {
+                       "attack_type":  "MELEE",
+                       "base_power":  60,
+                       "accuracy":  -1,
+                       "range":  2.0,
+                       "particles":  {
+                                         "type":  "sweep_attack",
+                                         "count":  2
+                                     }
+                   }
+               ]
+}

@@ -1,0 +1,39 @@
+# Gradle
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDEA
+.idea/
+*.iml
+*.iws
+
+# VS Code
+.vscode/
+
+# Build artifacts
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# MacOS
+.DS_Store
+
+# Log files
+*.log
+
+# Minecraft run configurations
+run/
+logs/
+debug/
+
+# Kotlin
+.kotlin/
+
+# Scratch & Dev
+decompiled_cmdclient/
+task.md
+move_capabilities_research.md

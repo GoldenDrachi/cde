@@ -1,0 +1,23 @@
+{
+  "cobblemon_ability_id": "cobblemon:intimidate",
+  "on_switch_in": {
+    "target_type": "enemies",
+    "phase": {
+      "attack_type": "status",
+      "multiple_targets": true,
+      "hits_friendlies": false,
+      "accuracy": -1,
+      "impact_aoe": {
+        "range_blocks": 15.0,
+        "falloff_type": "none"
+      },
+      "status_effects": [
+        {
+          "type": "attack_down",
+          "chance": 100,
+          "duration_turns": -1
+        }
+      ]
+    }
+  }
+}

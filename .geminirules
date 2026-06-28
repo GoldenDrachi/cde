@@ -1,0 +1,6 @@
+Focus on Modulation. One Function should do one action. Rather make a new function to link then building big piles of code.
+Always build with variations in mind. Hard coded values should be avoided if possible.
+Review logic twice before implementation.
+Always think about edge cases and potential bugs.
+Prioritize feel for the player and performance.
+Comment a lot, but keep comments in a way as if they are written by a developer.

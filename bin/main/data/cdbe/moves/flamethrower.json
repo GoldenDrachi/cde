@@ -1,0 +1,24 @@
+{
+    "cobblemon_move_id":  "cobblemon:flamethrower",
+    "cooldown_turns":  5.0,
+    "phases":  [
+                   {
+                       "attack_type":  "BEAM",
+                       "base_power":  90,
+                       "accuracy":  100,
+                       "range":  15.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "burn",
+                                                  "duration_turns":  5.0,
+                                                  "chance": 10
+                                              }
+                                          ],
+                       "hits_friendlies":  false,
+                       "particles":  {
+                                         "type":  "flame",
+                                         "count":  10
+                                     }
+                   }
+               ]
+}

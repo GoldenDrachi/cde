@@ -1,0 +1,19 @@
+{
+    "cobblemon_move_id":  "cobblemon:sheercold",
+    "cooldown_turns":  10.0,
+    "phases":  [
+                   {
+                       "attack_type":  "CONE",
+                       "base_power":  0,
+                       "accuracy":  30,
+                       "range":  3.0,
+                       "bypasses":  {
+                                        "is_ohko":  true
+                                    },
+                       "particles":  {
+                                         "type":  "snow",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}

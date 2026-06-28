@@ -1,0 +1,26 @@
+{
+    "cobblemon_move_id":  "cobblemon:solarbeam",
+    "cooldown_turns":  4.0,
+    "phases":  [
+                   {
+                       "attack_type":  "SELF",
+                       "attack_duration_turns":  1.0,
+                       "attack_message":  "is absorbing sunlight!",
+                       "particles":  {
+                                         "type":  "happy_villager",
+                                         "count":  5
+                                     }
+                   },
+                   {
+                       "attack_type":  "BEAM",
+                       "base_power":  120,
+                       "accuracy":  100,
+                       "range":  25.0,
+                       "multiple_targets":  true,
+                       "particles":  {
+                                         "type":  "end_rod",
+                                         "count":  5
+                                     }
+                   }
+               ]
+}

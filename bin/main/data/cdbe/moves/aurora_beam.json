@@ -1,0 +1,23 @@
+{
+    "cobblemon_move_id":  "cobblemon:aurorabeam",
+    "cooldown_turns":  2.5,
+    "phases":  [
+                   {
+                       "attack_type":  "BEAM",
+                       "base_power":  65,
+                       "accuracy":  100,
+                       "range":  20.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "attack_down",
+                                                  "duration_turns":  15.0,
+                                                  "chance": 10
+                                              }
+                                          ],
+                       "particles":  {
+                                         "type":  "end_rod",
+                                         "count":  10
+                                     }
+                   }
+               ]
+}

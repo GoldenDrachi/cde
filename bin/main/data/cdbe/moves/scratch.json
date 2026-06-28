@@ -1,0 +1,17 @@
+{
+    "cobblemon_move_id":  "cobblemon:scratch",
+    "cooldown_turns":  1.5,
+    "phases":  [
+                   {
+                       "attack_type":  "MELEE",
+                       "base_power":  40,
+                       "accuracy":  100,
+                       "range":  3.0,
+                       "hits_friendlies":  false,
+                       "particles":  {
+                                         "type":  "sweep_attack",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}

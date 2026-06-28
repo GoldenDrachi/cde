@@ -1,0 +1,18 @@
+{
+    "cobblemon_move_id":  "cobblemon:hypervoice",
+    "cooldown_turns":  5.0,
+    "phases":  [
+                   {
+                       "attack_type":  "WAVE",
+                       "base_power":  90,
+                       "accuracy":  100,
+                       "range":  15.0,
+                       "hits_friendlies":  false,
+                       "multiple_targets":  true,
+                       "particles":  {
+                                         "type":  "magic",
+                                         "count":  10
+                                     }
+                   }
+               ]
+}

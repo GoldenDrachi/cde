@@ -1,0 +1,19 @@
+{
+  "cobblemon_move_id": "cobblemon:waterpledge",
+  "cooldown_turns": 3.0,
+  "phases": [
+    {
+      "attack_type": "CRAWL",
+      "base_power": 80,
+      "accuracy": 100,
+      "range": 12.0,
+      "projectile_speed": 0.8,
+      "multiple_targets": false,
+      "hits_friendlies": false,
+      "particles": {
+        "type": "splash",
+        "count": 30
+      }
+    }
+  ]
+}

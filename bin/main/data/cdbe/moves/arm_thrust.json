@@ -1,0 +1,21 @@
+{
+    "cobblemon_move_id":  "cobblemon:armthrust",
+    "cooldown_turns":  2.0,
+    "phases":  [
+                   {
+                       "attack_type":  "MELEE",
+                       "base_power":  15,
+                       "accuracy":  100,
+                       "range":  3.0,
+                       "multi_hit_data":  {
+                                              "min_hits":  2,
+                                              "max_hits":  5,
+                                              "delay_ticks":  5
+                                          },
+                       "particles":  {
+                                         "type":  "crit",
+                                         "count":  3
+                                     }
+                   }
+               ]
+}

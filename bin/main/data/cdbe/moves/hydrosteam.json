@@ -1,0 +1,17 @@
+{
+    "cobblemon_move_id":  "cobblemon:hydrosteam",
+    "cooldown_turns":  5.0,
+    "phases":  [
+                   {
+                       "attack_type":  "BEAM",
+                       "base_power":  80,
+                       "accuracy":  110,
+                       "range":  15.0,
+                       "hits_friendlies":  false,
+                       "particles":  {
+                                         "type":  "splash",
+                                         "count":  10
+                                     }
+                   }
+               ]
+}

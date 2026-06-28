@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "cdbe",
+	"version": "${version}",
+	"name": "Cobblemon Dungeon Battle Engine",
+	"description": "A proof of concept mod for Cobblemon",
+	"authors": [
+		"Author"
+	],
+	"contact": {
+		"homepage": "",
+		"sources": ""
+	},
+	"license": "All Rights Reserved",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			{
+				"value": "net.drachi.cdbe.CobblemonDungeonBattleEngine",
+				"adapter": "kotlin"
+			}
+		],
+		"client": [
+			{
+				"value": "net.drachi.cdbe.CobblemonDungeonBattleEngineClient",
+				"adapter": "kotlin"
+			}
+		]
+	},
+	"mixins": [
+		"cdbe.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.18.0",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*",
+		"fabric-language-kotlin": "*",
+		"cobblemon": ">=1.7.3"
+	}
+}

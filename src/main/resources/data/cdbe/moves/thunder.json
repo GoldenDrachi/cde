@@ -1,0 +1,23 @@
+{
+  "cobblemon_move_id": "cobblemon:thunder",
+  "cooldown_turns": 4.0,
+  "phases": [
+    {
+      "attack_type": "COLUMN",
+      "base_power": 110,
+      "accuracy": 70,
+      "range": 15.0,
+      "particles": {
+        "type": "magic",
+        "count": 30
+      },
+      "status_effects": [
+        {
+          "type": "paralysis",
+          "chance_percent": 30.0,
+          "duration_turns": 3.0
+        }
+      ]
+    }
+  ]
+}
