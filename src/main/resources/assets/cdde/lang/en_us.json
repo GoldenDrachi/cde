@@ -1,0 +1,10 @@
+{
+  "itemgroup.cdde.cdde_group": "Cobblemon Dungeons",
+  "block.cdde.palette_a": "Palette A",
+  "block.cdde.palette_b": "Palette B",
+  "block.cdde.palette_c": "Palette C",
+  "block.cdde.palette_d": "Palette D",
+  "block.cdde.hazard": "Hazard",
+  "block.cdde.pokemon_spawn": "Pokemon Spawn Block",
+  "block.cdde.item_spawn": "Item Spawn Block"
+}
