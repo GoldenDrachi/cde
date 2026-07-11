@@ -17,7 +17,8 @@ class StructurePiece(
     val template: StructureTemplate,
     val pos: BlockPos,
     val rotation: Rotation,
-    val type: PieceType
+    val type: PieceType,
+    val hasHazard: Boolean = false
 ) {
     val parsedJigsaws: List<ParsedJigsaw>
     val boundingBox: BoundingBox

@@ -196,7 +196,8 @@ class DungeonGenerator(
                     0,
                     actualRz * DungeonGrid.CELL_SIZE - zeroBox.minZ()
                 )
-                val roomPiece = StructurePiece(t, roomPos, rot, PieceType.ROOM)
+                val hasHazard = TemplateMapper.detectHazard(t)
+                val roomPiece = StructurePiece(t, roomPos, rot, PieceType.ROOM, hasHazard)
 
                 var exitsValid = true
                 val projectedExits = mutableListOf<Pair<Int, Int>>()

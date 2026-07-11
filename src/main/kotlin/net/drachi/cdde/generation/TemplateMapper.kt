@@ -95,7 +95,8 @@ class TemplateMapper(
                 else -> ParsedTemplate.Category.UNKNOWN
             }
 
-            val pt = ParsedTemplate(id, t, effectiveJigsaws, cat, hasHazard = false)
+            val hasHazard = detectHazard(t)
+            val pt = ParsedTemplate(id, t, effectiveJigsaws, cat, hasHazard)
             when (cat) {
                 ParsedTemplate.Category.CROSS -> crosses.add(pt)
                 ParsedTemplate.Category.T_JUNCTION -> ts.add(pt)
@@ -109,7 +110,8 @@ class TemplateMapper(
             val t = DungeonManager.loadedTemplates[id] ?: continue
             val jigsaws = parseJigsaws(t)
             if (jigsaws.size == 1) {
-                ends.add(ParsedTemplate(id, t, jigsaws, ParsedTemplate.Category.END, hasHazard = false))
+                val hasHazard = detectHazard(t)
+                ends.add(ParsedTemplate(id, t, jigsaws, ParsedTemplate.Category.END, hasHazard))
             }
         }
 
@@ -192,13 +194,33 @@ class TemplateMapper(
                     }
                 }
 
+                // Determine preferred hazard from connected rooms
+                var preferredHazard: Boolean? = null
+                if (state == DungeonGrid.CellState.ROOM_EXIT) {
+                    val matchingRoomJig = roomPieces.flatMap { it.parsedJigsaws }.firstOrNull { jig ->
+                        val rel = jig.pos.subtract(origin)
+                        val cx = Math.floorDiv(rel.x + jig.facing.stepX, DungeonGrid.CELL_SIZE)
+                        val cz = Math.floorDiv(rel.z + jig.facing.stepZ, DungeonGrid.CELL_SIZE)
+                        cx == x && cz == z
+                    }
+                    if (matchingRoomJig != null) {
+                        val room = roomPieces.firstOrNull { it.parsedJigsaws.contains(matchingRoomJig) }
+                        preferredHazard = room?.hasHazard
+                    }
+                }
+
                 var pt: ParsedTemplate? = null
                 var rotation = Rotation.NONE
 
                 for (pool in candidatePools) {
                     if (pool.isEmpty()) continue
                     val shuffledPool = pool.shuffled(kotlin.random.Random(random.nextLong()))
-                    for (candidate in shuffledPool) {
+                    val sortedPool = if (preferredHazard != null) {
+                        shuffledPool.sortedBy { if (it.hasHazard == preferredHazard) 0 else 1 }
+                    } else {
+                        shuffledPool
+                    }
+                    for (candidate in sortedPool) {
                         val rot = findMatchingRotation(candidate, openDirs)
                         if (rot != null) {
                             val relativeFloorY = (candidate.jigsaws.minOfOrNull { it.pos.y } ?: 1) - 1
@@ -226,7 +248,7 @@ class TemplateMapper(
                 
                 val pType = if (type == ParsedTemplate.Category.END) PieceType.END else PieceType.HALLWAY
                 val worldPos = BlockPos(cx + 3 - rotatedCenter.x, origin.y, cz + 3 - rotatedCenter.z)
-                val piece = StructurePiece(pt.template, worldPos, rotation, pType)
+                val piece = StructurePiece(pt.template, worldPos, rotation, pType, pt.hasHazard)
                 
                 // Room collision check to prevent junctions from cutting into/replacing rooms
                 if (intersectsBlockedCell(piece, grid) || intersectsRoomPhysically(piece, roomPieces)) {
@@ -373,6 +395,10 @@ class TemplateMapper(
         enclosedWallCells: Set<Pair<Int, Int>>
     ): Int {
         var currentJig = start
+        val startPiece = placedPieces.firstOrNull { it.parsedJigsaws.contains(start) } 
+            ?: roomPieces.firstOrNull { it.parsedJigsaws.contains(start) }
+        var currentHasHazard = startPiece?.hasHazard ?: false
+        
         var placed = 0
         var iter = 0
         val tempPlaced = mutableListOf<StructurePiece>()
@@ -394,7 +420,10 @@ class TemplateMapper(
             val requiredFacing = currentJig.facing.opposite
             var placedPiece = false
             
-            for (pt in straights.shuffled(kotlin.random.Random(random.nextLong()))) {
+            val shuffledStraights = straights.shuffled(kotlin.random.Random(random.nextLong()))
+            val sortedStraights = shuffledStraights.sortedBy { if (it.hasHazard == currentHasHazard) 0 else 1 }
+            
+            for (pt in sortedStraights) {
                 if (!config.generateHazardSeas && pt.res.path.lowercase().contains("open")) {
                     continue
                 }
@@ -415,7 +444,7 @@ class TemplateMapper(
                 
                 val targetPos = currentJig.pos.relative(currentJig.facing)
                 
-                val dummy = StructurePiece(pt.template, BlockPos.ZERO, bestRot, PieceType.HALLWAY)
+                val dummy = StructurePiece(pt.template, BlockPos.ZERO, bestRot, PieceType.HALLWAY, pt.hasHazard)
                 val dummyJigPos = if (dummy.parsedJigsaws.size == 1) {
                     dummy.parsedJigsaws[0].pos
                 } else {
@@ -423,7 +452,7 @@ class TemplateMapper(
                 }
                 
                 val origin = targetPos.subtract(dummyJigPos)
-                val newPiece = StructurePiece(pt.template, origin, bestRot, PieceType.HALLWAY)
+                val newPiece = StructurePiece(pt.template, origin, bestRot, PieceType.HALLWAY, pt.hasHazard)
                 
                 // Reject if the hallway piece intersects with any room cell
                 if (intersectsBlockedCell(newPiece, grid) || intersectsRoomPhysically(newPiece, roomPieces)) {
@@ -462,13 +491,14 @@ class TemplateMapper(
                 tempPlaced.add(newPiece)
                 placed++
                 currentJig = openJig
+                currentHasHazard = pt.hasHazard
                 placedPiece = true
                 break
             }
             
             if (!placedPiece) {
                 val availableDistances = straights.map { 
-                    val dummy = StructurePiece(it.template, BlockPos.ZERO, Rotation.NONE, PieceType.HALLWAY)
+                    val dummy = StructurePiece(it.template, BlockPos.ZERO, Rotation.NONE, PieceType.HALLWAY, it.hasHazard)
                     val jigs = dummy.parsedJigsaws
                     if (jigs.size >= 2) jigs[0].pos.distManhattan(jigs[1].pos) else 0 
                 }.distinct()
@@ -520,7 +550,7 @@ class TemplateMapper(
         if (matchedLocalJig == null) return false
 
         val targetPos = jig.pos.relative(jig.facing)
-        val dummy = StructurePiece(endPt.template, BlockPos.ZERO, bestRot, PieceType.END)
+        val dummy = StructurePiece(endPt.template, BlockPos.ZERO, bestRot, PieceType.END, endPt.hasHazard)
         val dummyJigPos = if (dummy.parsedJigsaws.size == 1) {
             dummy.parsedJigsaws[0].pos
         } else {
@@ -529,7 +559,7 @@ class TemplateMapper(
 
         val origin = targetPos.subtract(dummyJigPos)
         
-        val endPiece = StructurePiece(endPt.template, origin, bestRot, PieceType.END)
+        val endPiece = StructurePiece(endPt.template, origin, bestRot, PieceType.END, endPt.hasHazard)
         
         // Reject if the end piece intersects with any room cell
         val roomPieces = placedPieces.filter { it.type == PieceType.ROOM }
@@ -662,7 +692,7 @@ class TemplateMapper(
                 val anchorDir = targetDirs.firstOrNull { dir -> adjPiece.parsedJigsaws.any { it.facing == dir } } ?: continue
                 val targetJigPos = adjPiece.parsedJigsaws.first { it.facing == anchorDir }.pos
                 
-                val dummy = StructurePiece(candidate.template, BlockPos.ZERO, rot, PieceType.HALLWAY)
+                val dummy = StructurePiece(candidate.template, BlockPos.ZERO, rot, PieceType.HALLWAY, candidate.hasHazard)
                 val dummyJigPos = dummy.parsedJigsaws.firstOrNull { it.facing == anchorDir }?.pos ?: continue
                 val newWorldPos = targetJigPos.subtract(dummyJigPos)
                 
@@ -670,7 +700,8 @@ class TemplateMapper(
                     candidate.template,
                     newWorldPos,
                     rot,
-                    if (category == ParsedTemplate.Category.END) PieceType.END else PieceType.HALLWAY
+                    if (category == ParsedTemplate.Category.END) PieceType.END else PieceType.HALLWAY,
+                    candidate.hasHazard
                 )
                 
                 // Room collision check
@@ -785,19 +816,7 @@ class TemplateMapper(
         val settings = StructurePlaceSettings().setRotation(rotation)
         val localBox = template.getBoundingBox(settings, BlockPos.ZERO)
         
-        val palettes = try {
-            val field = try {
-                StructureTemplate::class.java.getDeclaredField("field_15586")
-            } catch (e: NoSuchFieldException) {
-                StructureTemplate::class.java.getDeclaredField("palettes")
-            }
-            field.isAccessible = true
-            @Suppress("UNCHECKED_CAST")
-            field.get(template) as List<StructureTemplate.Palette>
-        } catch (e: Exception) {
-            CobblemonDungeonDungeonsEngine.logger.error("Failed to get palettes field via reflection", e)
-            emptyList()
-        }
+        val palettes = getPalettes(template)
         val firstPalette = palettes.firstOrNull()
         val rawBlocks = firstPalette?.blocks() ?: emptyList()
         val blocks = rawBlocks.map { info ->
@@ -1100,7 +1119,8 @@ class TemplateMapper(
                                 candidate.template,
                                 newWorldPos,
                                 rot,
-                                if (targetCategory == ParsedTemplate.Category.END) PieceType.END else PieceType.HALLWAY
+                                if (targetCategory == ParsedTemplate.Category.END) PieceType.END else PieceType.HALLWAY,
+                                candidate.hasHazard
                             )
                             
                             placedPieces.remove(piece)
@@ -1129,6 +1149,34 @@ class TemplateMapper(
             return template.filterBlocks(BlockPos.ZERO, settings, Blocks.JIGSAW).map {
                 ParsedJigsaw(it.pos, it.facing())
             }
+        }
+        
+        fun getPalettes(template: StructureTemplate): List<StructureTemplate.Palette> {
+            return try {
+                val field = try {
+                    StructureTemplate::class.java.getDeclaredField("field_15586")
+                } catch (e: NoSuchFieldException) {
+                    StructureTemplate::class.java.getDeclaredField("palettes")
+                }
+                field.isAccessible = true
+                @Suppress("UNCHECKED_CAST")
+                field.get(template) as List<StructureTemplate.Palette>
+            } catch (e: Exception) {
+                CobblemonDungeonDungeonsEngine.logger.error("Failed to get palettes field via reflection", e)
+                emptyList()
+            }
+        }
+
+        fun detectHazard(template: StructureTemplate): Boolean {
+            val palettes = getPalettes(template)
+            for (palette in palettes) {
+                for (block in palette.blocks()) {
+                    if (block.state.`is`(net.drachi.cdde.registry.ModBlocks.HAZARD)) {
+                        return true
+                    }
+                }
+            }
+            return false
         }
     }
 }
