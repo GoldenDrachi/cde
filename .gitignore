@@ -9,3 +9,4 @@ logs/
 .vscode/
 bin/
 out/
+task.md
