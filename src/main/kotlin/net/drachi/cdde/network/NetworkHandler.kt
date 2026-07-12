@@ -17,9 +17,9 @@ data class SyncSelectedSlotPayload(val slotIndex: Int) : CustomPacketPayload {
     companion object {
         val ID = CustomPacketPayload.Type<SyncSelectedSlotPayload>(ResourceLocation.fromNamespaceAndPath("cdde", "sync_selected_slot"))
 
-        val CODEC: StreamCodec<RegistryFriendlyByteBuf, SyncSelectedSlotPayload> = StreamCodec.composite(
-            ByteBufCodecs.INT, SyncSelectedSlotPayload::slotIndex,
-            ::SyncSelectedSlotPayload
+        val CODEC: StreamCodec<RegistryFriendlyByteBuf, SyncSelectedSlotPayload> = StreamCodec.of(
+            { buf, payload -> buf.writeInt(payload.slotIndex) },
+            { buf -> SyncSelectedSlotPayload(buf.readInt()) }
         )
     }
 }
