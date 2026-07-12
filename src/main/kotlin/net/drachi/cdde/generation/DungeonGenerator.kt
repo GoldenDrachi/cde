@@ -41,6 +41,7 @@ class DungeonGenerator(
     private val origin: BlockPos,
     private val config: DungeonConfig
 ) {
+    var stairPosition: BlockPos? = null
     private val placedPieces = mutableListOf<StructurePiece>()
     private val roomPieces = mutableListOf<StructurePiece>()
     private val hazardPositions = mutableListOf<BlockPos>()
@@ -292,18 +293,52 @@ class DungeonGenerator(
             DungeonManager.itemSpawns.add(info.pos)
             CobblemonDungeonDungeonsEngine.logger.info("Registered Item spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
         }
+        
+        val tSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.TREASURE_SPAWN)
+        for (info in tSpawns) {
+            level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
+            DungeonManager.treasureSpawns.add(info.pos)
+            CobblemonDungeonDungeonsEngine.logger.info("Registered Treasure spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+        }
+        
+        val bSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.BOSS_SPAWN)
+        for (info in bSpawns) {
+            level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
+            DungeonManager.bossSpawns.add(info.pos)
+            CobblemonDungeonDungeonsEngine.logger.info("Registered Boss spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+        }
+        
+        val mSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.MINION_SPAWN)
+        for (info in mSpawns) {
+            level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
+            DungeonManager.minionSpawns.add(info.pos)
+            CobblemonDungeonDungeonsEngine.logger.info("Registered Minion spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
     //  POST-PROCESSING
     // ═════════════════════════════════════════════════════════════════════
 
-    /** Places barrier blocks below any hazard positions to prevent falling through void. */
+    /** Places barrier blocks below any hazard positions to prevent falling through void. Also places hazard walls above hazards to prevent jumping. */
     private fun postProcessHazards() {
         for (pos in hazardPositions) {
             val below = pos.below()
             if (level.getBlockState(below).isAir) {
                 level.setBlock(below, Blocks.BARRIER.defaultBlockState(), 3)
+            }
+            
+            val above = pos.above()
+            val stateAtPos = level.getBlockState(above)
+            if (stateAtPos.isAir) {
+                val hazardState = level.getBlockState(pos)
+                val wallState = when (hazardState.block) {
+                    net.drachi.cdde.registry.ModBlocks.HAZARD_WATER -> net.drachi.cdde.registry.ModBlocks.HAZARD_WALL_WATER.defaultBlockState()
+                    net.drachi.cdde.registry.ModBlocks.HAZARD_LAVA -> net.drachi.cdde.registry.ModBlocks.HAZARD_WALL_LAVA.defaultBlockState()
+                    net.drachi.cdde.registry.ModBlocks.HAZARD_VOID -> net.drachi.cdde.registry.ModBlocks.HAZARD_WALL_VOID.defaultBlockState()
+                    else -> net.drachi.cdde.registry.ModBlocks.HAZARD_WALL_WATER.defaultBlockState()
+                }
+                level.setBlock(above, wallState, 3)
             }
         }
     }
@@ -398,7 +433,7 @@ class DungeonGenerator(
                     CobblemonDungeonDungeonsEngine.logger.info("Placed stairs template '$stairLoc' at $spot")
                     
                     // Track position for step-on detection: center of the 3x3 template
-                    DungeonManager.stairPosition = spot.offset(1, 0, 1)
+                    this.stairPosition = spot.offset(1, 0, 1)
                 } else {
                     val baseState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.stairBaseBlock)).defaultBlockState()
                     val stepBlock = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.stairStepBlock))
@@ -457,7 +492,7 @@ class DungeonGenerator(
                             }
                         }
                         
-                        DungeonManager.stairPosition = spot.offset(targetDx, 2, targetDz)
+                        this.stairPosition = spot.offset(targetDx, 2, targetDz)
                     } else { // DOWN (Sunken Pit)
                         // 1. Build the stair trench steps inside 3x3 (3-blocks-wide)
                         // Shifted up by 1 block so the top step starts exactly at floorY.
@@ -511,9 +546,9 @@ class DungeonGenerator(
                             }
                         }
                         
-                        DungeonManager.stairPosition = spot.offset(targetDx, -2, targetDz)
+                        this.stairPosition = spot.offset(targetDx, -2, targetDz)
                     }
-                    CobblemonDungeonDungeonsEngine.logger.info("Placed 3x3 recognizable fallback stairs at $spot climbing $climbDir. Target stand pos is ${DungeonManager.stairPosition}")
+                    CobblemonDungeonDungeonsEngine.logger.info("Placed 3x3 recognizable fallback stairs at $spot climbing $climbDir. Target stand pos is ${this.stairPosition}")
                 }
                 return
             }

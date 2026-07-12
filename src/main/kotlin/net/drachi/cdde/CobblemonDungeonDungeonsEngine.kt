@@ -21,19 +21,23 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
         }
 
         ServerTickEvents.START_SERVER_TICK.register { server ->
-            val stairPos = DungeonManager.stairPosition
-            if (stairPos != null) {
-                for (player in server.playerList.players) {
+            for (player in server.playerList.players) {
+                val instance = net.drachi.cdde.data.DungeonManager.getActiveDungeon(player)
+                if (instance != null) {
                     val pPos = player.blockPosition()
-                    val dx = pPos.x - stairPos.x
-                    val dz = pPos.z - stairPos.z
-                    val dy = pPos.y - stairPos.y
-                    // Check if player is within the 3x3 horizontal bounds, and at or above the stairs bottom level
-                    if (dx in -1..1 && dz in -1..1 && dy >= -4) {
-                        player.displayClientMessage(
-                            net.minecraft.network.chat.Component.literal("§aYou stand on the stairs! Floor transition detected.§r"),
-                            true // Displays in Action Bar
-                        )
+                    
+                    // Check if player stands on any known stair position for their floor
+                    val stairPos = instance.stairPositions[instance.currentFloor + 1]
+                    if (stairPos != null) {
+                        val dx = pPos.x - stairPos.x
+                        val dz = pPos.z - stairPos.z
+                        val dy = pPos.y - stairPos.y
+                        // Check if player is within the 3x3 horizontal bounds, and at or above the stairs bottom level
+                        if (dx in -1..1 && dz in -1..1 && dy >= -4) {
+                            if (player is net.minecraft.server.level.ServerPlayer) {
+                                net.drachi.cdde.data.DungeonManager.onPlayerInteractStairs(player, stairPos)
+                            }
+                        }
                     }
                 }
             }

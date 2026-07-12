@@ -31,13 +31,14 @@ class PaletteProcessor(
     ): StructureTemplate.StructureBlockInfo {
         val state = blockInfoGlobal.state
         val block = state.block
+        val blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString()
 
-        val newState = when (block) {
-            ModBlocks.PALETTE_A -> paletteAMap
-            ModBlocks.PALETTE_B -> paletteBMap
-            ModBlocks.PALETTE_C -> paletteCMap
-            ModBlocks.PALETTE_D -> paletteDMap
-            ModBlocks.HAZARD -> {
+        val newState = when (blockId) {
+            "cdde:palette_a" -> paletteAMap
+            "cdde:palette_b" -> paletteBMap
+            "cdde:palette_c" -> paletteCMap
+            "cdde:palette_d" -> paletteDMap
+            "cdde:hazard", "minecraft:lava", "minecraft:water" -> {
                 hazardPositions?.add(blockInfoGlobal.pos)
                 hazardMap
             }

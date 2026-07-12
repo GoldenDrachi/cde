@@ -1,38 +1,174 @@
 package net.drachi.cdde.command
 
 import com.mojang.brigadier.CommandDispatcher
+import com.mojang.brigadier.arguments.StringArgumentType
+import net.drachi.cdde.CobblemonDungeonDungeonsEngine
 import net.drachi.cdde.data.DungeonConfig
+import net.drachi.cdde.data.DungeonManager
 import net.drachi.cdde.generation.DungeonGenerator
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceKey
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.core.registries.Registries
+import net.minecraft.server.level.ServerPlayer
 
 object DungeonCommand {
     fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
-        dispatcher.register(
-            Commands.literal("cdde")
-                .requires { it.hasPermission(2) }
-                .then(
-                    Commands.literal("generate")
-                        .executes { context ->
-                            val source = context.source
-                            val level = source.level
-                            val pos = source.playerOrException.blockPosition()
+        val root = Commands.literal("cdde").requires { it.hasPermission(2) }
 
-                            source.sendSuccess({ Component.literal("Generating dungeon POC at $pos...") }, true)
+        val generateCmd = Commands.literal("generate")
+            .then(
+                Commands.argument("hazard", StringArgumentType.word())
+                    .executes { context -> executeGenerate(context.source, StringArgumentType.getString(context, "hazard")) }
+            )
+            .executes { context -> executeGenerate(context.source, null) }
 
-                            try {
-                                val config = DungeonConfig("test_run")
-                                val generator = DungeonGenerator(level, pos, config)
-                                generator.generate()
-                            } catch (e: Throwable) {
-                                net.drachi.cdde.CobblemonDungeonDungeonsEngine.logger.error("Dungeon generation failed!", e)
-                                throw e
-                            }
+        val leaveCmd = Commands.literal("leave")
+            .executes { context -> executeLeave(context.source) }
 
-                            1
-                        }
+        root.then(generateCmd).then(leaveCmd)
+        dispatcher.register(root)
+    }
+
+    private fun executeGenerate(source: CommandSourceStack, hazardArg: String?): Int {
+        val player = source.playerOrException
+        val server = source.server
+        
+        // Find dimension
+        val dungeonDimKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("cdde", "dungeon"))
+        val dungeonLevel = server.getLevel(dungeonDimKey)
+        
+        if (dungeonLevel == null) {
+            source.sendFailure(Component.translatable("message.cdde.error.no_dimension"))
+            return 0
+        }
+
+        var config = DungeonConfig("test_run")
+        if (hazardArg != null) {
+            val prefix = if (hazardArg.contains(":")) "" else "minecraft:"
+            config = config.copy(hazards = listOf(prefix + hazardArg))
+        }
+
+        val instance = DungeonManager.allocateInstance(config)
+        source.sendSuccess({ net.minecraft.network.chat.Component.translatable("message.cdde.generating", instance.instanceId.toString()) }, true)
+
+        try {
+            // Generate Floor 1
+            val gen1 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ), config)
+            val startPosFloor1 = net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
+            gen1.generate()
+            instance.floorStartPositions[1] = startPosFloor1
+            if (gen1.stairPosition != null) {
+                instance.stairPositions[1] = gen1.stairPosition!!
+            }
+            
+            // Generate Floor 2
+            val gen2 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX + 1000, 64, instance.originZ), config)
+            val startPosFloor2 = net.minecraft.core.BlockPos(instance.originX + 1000, 65, instance.originZ)
+            gen2.generate()
+            instance.floorStartPositions[2] = startPosFloor2
+            if (gen2.stairPosition != null) {
+                instance.stairPositions[2] = gen2.stairPosition!!
+            }
+
+            // Find all party members (fallback to just the player if not in a party)
+            val partyMembers = net.drachi.cdde.api.GroupAPI.getPartyMembers(player.uuid) ?: listOf(player.uuid)
+            val playersToTeleport = partyMembers.mapNotNull { server.playerList.getPlayer(it) }
+
+            // Array of offsets to prevent entities from clipping into each other
+            val spawnOffsets = arrayOf(
+                Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
+                Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
+                Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
+            )
+            var spawnIndex = 0
+
+            playersToTeleport.forEach { member ->
+                // Record their return location
+                instance.returnLocations[member.uuid] = member.blockPosition()
+                net.drachi.cdde.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, member.blockPosition())
+
+                // Pick a spot for the player
+                val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
+                spawnIndex++
+                val pPos = net.minecraft.core.BlockPos(startPosFloor1.x + pOffset.first, startPosFloor1.y, startPosFloor1.z + pOffset.second)
+                
+                // Teleport player (add 0.5 to center in block)
+                member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
+
+                // Teleport out-of-ball party Pokemon
+                val memberParty = com.cobblemon.mod.common.Cobblemon.storage.getParty(member)
+                for (i in 0 until memberParty.size()) {
+                    val pokemon = memberParty.get(i)
+                    if (pokemon != null && pokemon.entity != null) {
+                        val pEntity = pokemon.entity!!
+                        
+                        val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
+                        spawnIndex++
+                        val pokePos = net.minecraft.core.BlockPos(startPosFloor1.x + pokeOffset.first, startPosFloor1.y, startPosFloor1.z + pokeOffset.second)
+                        
+                        pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
+                    }
+                }
+
+                // Show initial floor title
+                member.server.commands.performPrefixedCommand(
+                    member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                    "title @s title {\"translate\":\"message.cdde.floor_eg\", \"color\":\"yellow\"}"
                 )
-        )
+            }
+        } catch (e: Throwable) {
+            CobblemonDungeonDungeonsEngine.logger.error("Dungeon generation failed!", e)
+            source.sendFailure(Component.translatable("message.cdde.error.generation_failed", e.message ?: "Unknown error"))
+            return 0
+        }
+
+        return 1
+    }
+
+    private fun executeLeave(source: CommandSourceStack): Int {
+        val player = source.playerOrException
+        val level = source.level
+        val dim = level.dimension().location()
+
+        if (dim.namespace != "cdde" || dim.path != "dungeon") {
+            source.sendFailure(Component.translatable("message.cdde.error.not_in_dungeon"))
+            return 0
+        }
+
+        val z = player.blockPosition().z
+        val instanceIndex = z / 10000
+        val expectedOriginZ = instanceIndex * 10000
+
+        val instance = DungeonManager.activeDungeons.values.find { it.originZ == expectedOriginZ }
+        if (instance == null) {
+            source.sendFailure(Component.translatable("message.cdde.error.no_active_dungeon"))
+            // Fallback teleport to overworld
+            val overworld = source.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
+            if (overworld != null) {
+                val spawn = overworld.sharedSpawnPos
+                player.teleportTo(overworld, spawn.x.toDouble(), spawn.y.toDouble(), spawn.z.toDouble(), player.yRot, player.xRot)
+            }
+            return 0
+        }
+
+        // Return player
+        val returnPos = instance.returnLocations[player.uuid]
+        val overworld = source.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
+        if (returnPos != null && overworld != null) {
+            player.teleportTo(overworld, returnPos.x.toDouble(), returnPos.y.toDouble(), returnPos.z.toDouble(), player.yRot, player.xRot)
+        } else if (overworld != null) {
+            val spawn = overworld.sharedSpawnPos
+            player.teleportTo(overworld, spawn.x.toDouble(), spawn.y.toDouble(), spawn.z.toDouble(), player.yRot, player.xRot)
+        }
+
+        // Remove player from the dungeon tracking
+        instance.returnLocations.remove(player.uuid)
+        net.drachi.cdde.database.DatabaseManager.removeDungeonPlayer(instance.instanceId, player.uuid)
+        
+        source.sendSuccess({ Component.translatable("message.cdde.left_dungeon") }, true)
+        return 1
     }
 }

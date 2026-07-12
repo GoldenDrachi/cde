@@ -24,6 +24,11 @@ object ModItemGroups {
                 entries.accept(ModBlocks.HAZARD)
                 entries.accept(ModBlocks.POKEMON_SPAWN)
                 entries.accept(ModBlocks.ITEM_SPAWN)
+                entries.accept(ModBlocks.TREASURE_SPAWN)
+                entries.accept(ModBlocks.BOSS_SPAWN)
+                entries.accept(ModBlocks.MINION_SPAWN)
+                entries.accept(ModBlocks.TREASURE_DOOR)
+                entries.accept(ModItems.TREASURE_KEY)
                 entries.accept(Items.STRUCTURE_BLOCK)
                 entries.accept(Items.JIGSAW)
             }

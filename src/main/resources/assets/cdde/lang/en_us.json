@@ -6,5 +6,20 @@
   "block.cdde.palette_d": "Palette D",
   "block.cdde.hazard": "Hazard",
   "block.cdde.pokemon_spawn": "Pokemon Spawn Block",
-  "block.cdde.item_spawn": "Item Spawn Block"
+  "block.cdde.item_spawn": "Item Spawn Block",
+  "block.cdde.treasure_spawn": "Treasure Spawn Block",
+  "block.cdde.boss_spawn": "Boss Spawn Block",
+  "block.cdde.minion_spawn": "Minion Spawn Block",
+  "block.cdde.treasure_door": "Treasure Door",
+  "item.cdde.treasure_key": "Key",
+  "message.cdde.floor_eg": "Floor EG",
+  "message.cdde.floor_down": "Floor U%s",
+  "message.cdde.floor_up": "Floor %s",
+  "message.cdde.error.no_dimension": "Could not find cdde:dungeon dimension! Check your datapacks.",
+  "message.cdde.generating": "Generating dungeon %s...",
+  "message.cdde.error.generation_failed": "Generation failed: %s",
+  "message.cdde.error.not_in_dungeon": "You are not in a dungeon!",
+  "message.cdde.error.no_active_dungeon": "Could not find active dungeon instance here!",
+  "message.cdde.left_dungeon": "Left the dungeon.",
+  "message.cdde.expired_offline": "Your dungeon expired while you were offline! Returning you to the overworld."
 }

@@ -34,6 +34,14 @@ dependencies {
 
 	// Cobblemon
 	modCompileOnly "maven.modrinth:cobblemon:${project.cobblemon_version}"
+
+	// Database
+	implementation "org.mariadb.jdbc:mariadb-java-client:${project.mariadb_version}"
+	include "org.mariadb.jdbc:mariadb-java-client:${project.mariadb_version}"
+	implementation "com.zaxxer:HikariCP:${project.hikaricp_version}"
+	include "com.zaxxer:HikariCP:${project.hikaricp_version}"
+	implementation "org.xerial:sqlite-jdbc:${project.sqlite_version}"
+	include "org.xerial:sqlite-jdbc:${project.sqlite_version}"
 }
 
 processResources {

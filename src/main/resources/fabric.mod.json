@@ -19,6 +19,12 @@
         "value": "net.drachi.cdde.CobblemonDungeonDungeonsEngine"
       }
     ],
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "net.drachi.cdde.client.CDDEClient"
+      }
+    ],
     "fabric-datagen": [
       {
         "adapter": "kotlin",

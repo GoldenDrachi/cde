@@ -3,7 +3,7 @@
 ## 1. World Generation & Architecture
 - **Dimensions:** Temporary dimension generated per group/player upon entry. Reference Cobblemon Raid Dens for dimension creation logic.
 - **Entry System:** Triggered via command or custom item with UI.
-- **Procedural Gen:** Uses pre-built `.nbt` rooms and hallways linked via Jigsaw Blocks. Custom single-color blocks are added to Creative mode for building templates: 4 base palette blocks (floors, walls, etc.) and 1 hazard block. Spawns are handled via custom `Pokemon Spawn Block` and `Item Spawn Block` (vanilla entities are NOT saved in the structures).
+- **Procedural Gen:** Uses pre-built `.nbt` rooms and hallways linked via Jigsaw Blocks. Custom single-color blocks are added to Creative mode for building templates: 4 base palette blocks (floors, walls, etc.), 1 hazard block, and 1 treasure door block. Spawns are handled via custom `Pokemon Spawn Block`, `Item Spawn Block`, `Treasure Spawn Block`, `Boss Spawn Block`, and `Minion Spawn Block` (vanilla entities are NOT saved in the structures).
 - **Room Sets & Loading:** `.nbt` files are dynamically loaded on mod-load from `config/cdde/structures`. Structures are categorized by prefix: `[theme]_room_[name].nbt`, `[theme]_hallway_[name].nbt`, and `[theme]_end_[name].nbt` for dead ends.
 - **Dynamic Palettes:** `RuleStructureProcessor` swaps the 4 custom template blocks with dungeon-specific palettes. 
 - **Hazard Traversal (Gameplay Mechanic):** The Hazard block transforms into Water, Lava, or Void. However, they function as barriers for the player *unless* the player has an active Pokémon that can traverse them (e.g., Flying/Levitating/Ghost Pokémon can cross anything; Water Pokémon can cross Water; Fire Pokémon can cross Lava). In the future, players without the right Pokémon might cross but take severe status effects (e.g., Burn from Lava), and Ghost Pokémon may gain the ability to pass through walls.
@@ -18,6 +18,7 @@
 ## 3. Group, Team & Inventory 
 - **Group System:** Handled entirely by an external mod. This mod only provides/consumes API interfaces for group data.
 - **Team Size:** The group's total Pokémon pool is restricted to a maximum of 4 upon entry.
+- **Pokemon Size:** Pokemon Models that are too big are scaled down to up to 3 blocks width and 4 blocks height.
 - **Shared Inventory:** Custom, upgradable virtual inventory shared across the group. Vanilla player inventory is left behind and must be transferred before/after entry.
 
 ## 4. Gameplay & Future Features
