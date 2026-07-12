@@ -359,7 +359,7 @@ object DungeonManager {
             instance.config
         )
         generatorNext.generate()
-        val startPosFloorNext = net.minecraft.core.BlockPos(instance.originX + (instance.currentFloor * 1000), 65, instance.originZ)
+        val startPosFloorNext = generatorNext.startPosition ?: net.minecraft.core.BlockPos(instance.originX + (instance.currentFloor * 1000), 65, instance.originZ)
         instance.floorStartPositions[instance.currentFloor + 1] = startPosFloorNext
         if (generatorNext.stairPosition != null) {
             instance.stairPositions[instance.currentFloor + 1] = generatorNext.stairPosition!!

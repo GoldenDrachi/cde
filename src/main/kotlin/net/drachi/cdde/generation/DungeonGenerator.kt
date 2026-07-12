@@ -42,6 +42,7 @@ class DungeonGenerator(
     private val config: DungeonConfig
 ) {
     var stairPosition: BlockPos? = null
+    var startPosition: BlockPos? = null
     private val placedPieces = mutableListOf<StructurePiece>()
     private val roomPieces = mutableListOf<StructurePiece>()
     private val hazardPositions = mutableListOf<BlockPos>()
@@ -53,6 +54,14 @@ class DungeonGenerator(
         hazardPositions.clear()
         enclosedWallCells.clear()
         DungeonManager.clearSpawns()
+
+        val dim = DungeonGrid.gridSizeForRooms(config.maxRoomsPerFloor)
+        val maxBlocks = dim * DungeonGrid.CELL_SIZE
+        val bounds = net.minecraft.world.phys.AABB(
+            origin.x.toDouble() - 50.0, -64.0, origin.z.toDouble() - 50.0,
+            origin.x.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, origin.z.toDouble() + maxBlocks.toDouble() + 50.0
+        )
+        DungeonManager.clearRegion(level, bounds)
 
         // ── 0. Resolve Theme ──────────────────────────────────────────────
         val theme = DungeonManager.availableRooms.keys.firstOrNull() ?: run {
@@ -69,7 +78,6 @@ class DungeonGenerator(
         }
 
         // ── 1. Build Grid & Load Templates ────────────────────────────────
-        val dim = DungeonGrid.gridSizeForRooms(config.maxRoomsPerFloor)
         val grid = DungeonGrid(dim, dim, level.random, windingPercent = 45, extraConnectorChance = 6)
 
         val mapper = TemplateMapper(origin, level.random)
@@ -237,6 +245,12 @@ class DungeonGenerator(
                 val roomRegionId = grid.allocateRegion()
                 grid.blockRoomFootprint(actualRx, actualRz, actualWCells, actualDCells, roomRegionId)
                 
+                if (roomsPlaced == 0) {
+                    val size = t.getSize(rot)
+                    val roomCenter = roomPos.offset(size.x / 2, 1, size.z / 2)
+                    this.startPosition = roomCenter
+                }
+                
                 placedPieces.add(roomPiece)
                 roomPieces.add(roomPiece)
                 
@@ -272,7 +286,7 @@ class DungeonGenerator(
                     paletteBMap = Blocks.CRACKED_STONE_BRICKS.defaultBlockState(),
                     paletteCMap = Blocks.MOSSY_STONE_BRICKS.defaultBlockState(),
                     paletteDMap = Blocks.CHISELED_STONE_BRICKS.defaultBlockState(),
-                    hazardMap = Blocks.LAVA.defaultBlockState(),
+                    hazardMap = ModBlocks.HAZARD_LAVA.defaultBlockState(),
                     hazardPositions = hazardPositions
                 )
             )
@@ -613,10 +627,11 @@ class DungeonGenerator(
         
         if (hazardSeaCells.isEmpty()) return
         
-        val hazardState = if (config.hazards.isNotEmpty()) {
-            BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.hazards[0])).defaultBlockState()
-        } else {
-            Blocks.WATER.defaultBlockState()
+        val configuredHazard = if (config.hazards.isNotEmpty()) config.hazards[0] else "minecraft:water"
+        val hazardState = when {
+            configuredHazard.contains("lava") -> ModBlocks.HAZARD_LAVA.defaultBlockState()
+            configuredHazard.contains("void") -> ModBlocks.HAZARD_VOID.defaultBlockState()
+            else -> ModBlocks.HAZARD_WATER.defaultBlockState()
         }
         val floorState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.stairBaseBlock)).defaultBlockState()
         val lightState = Blocks.LIGHT.defaultBlockState().setValue(net.minecraft.world.level.block.LightBlock.LEVEL, 15)

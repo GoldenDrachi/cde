@@ -57,8 +57,8 @@ object DungeonCommand {
         try {
             // Generate Floor 1
             val gen1 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ), config)
-            val startPosFloor1 = net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
             gen1.generate()
+            val startPosFloor1 = gen1.startPosition ?: net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
             instance.floorStartPositions[1] = startPosFloor1
             if (gen1.stairPosition != null) {
                 instance.stairPositions[1] = gen1.stairPosition!!
@@ -66,8 +66,8 @@ object DungeonCommand {
             
             // Generate Floor 2
             val gen2 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX + 1000, 64, instance.originZ), config)
-            val startPosFloor2 = net.minecraft.core.BlockPos(instance.originX + 1000, 65, instance.originZ)
             gen2.generate()
+            val startPosFloor2 = gen2.startPosition ?: net.minecraft.core.BlockPos(instance.originX + 1000, 65, instance.originZ)
             instance.floorStartPositions[2] = startPosFloor2
             if (gen2.stairPosition != null) {
                 instance.stairPositions[2] = gen2.stairPosition!!

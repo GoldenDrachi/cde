@@ -15,6 +15,7 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
         net.drachi.cdde.registry.ModBlocks.register()
         net.drachi.cdde.registry.ModItemGroups.register()
         net.drachi.cdde.data.DungeonManager.init()
+        net.drachi.cdde.network.NetworkHandler.registerPayloads()
 
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             net.drachi.cdde.command.DungeonCommand.register(dispatcher)
