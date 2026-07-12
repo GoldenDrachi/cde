@@ -126,3 +126,6 @@ With rooms and junction nodes placed, the straight pathways (wires) between them
 #### Phase 8: Post-Processing & Fallback Sealing
 - **Capping:** Any remaining unconnected exits (such as dead-end nodes or unused room doorways) are capped by placing End templates (`EEE`).
 - **Sealing:** If placing an End template fails (due to intersection checks against nearby hallways or rooms), the engine falls back to sealing the doorway. It dynamically places a `5 × DungeonGrid.CELL_SIZE` solid wall of the fallback theme blocks (by default, `STONE_BRICKS`) to seal the gap. Given the alignment guarantees, fallbacks should only occur in tight, overlapping spaces.
+
+
+Extra Info: We need to discern a way to handle pokemon drops. They shpuldn't directly drop their loot and only drop dungeon items. The loot itself should be safed and given to the players after finishing the dungeon or given to the players guild if available.

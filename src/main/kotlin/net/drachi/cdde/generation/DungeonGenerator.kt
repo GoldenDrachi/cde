@@ -61,7 +61,7 @@ class DungeonGenerator(
             origin.x.toDouble() - 50.0, -64.0, origin.z.toDouble() - 50.0,
             origin.x.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, origin.z.toDouble() + maxBlocks.toDouble() + 50.0
         )
-        DungeonManager.clearRegion(level, bounds)
+        DungeonManager.clearRegion(level, bounds, config)
 
         // ── 0. Resolve Theme ──────────────────────────────────────────────
         val theme = DungeonManager.availableRooms.keys.firstOrNull() ?: run {
@@ -247,8 +247,8 @@ class DungeonGenerator(
                 
                 if (roomsPlaced == 0) {
                     val size = t.getSize(rot)
-                    val roomCenter = roomPos.offset(size.x / 2, 1, size.z / 2)
-                    this.startPosition = roomCenter
+                    val minJigY = TemplateMapper.parseJigsaws(t, rot).minOfOrNull { it.pos.y } ?: 1
+                    this.startPosition = roomPos.offset(size.x / 2, minJigY, size.z / 2)
                 }
                 
                 placedPieces.add(roomPiece)
@@ -274,6 +274,13 @@ class DungeonGenerator(
 
     /** Renders a single [StructurePiece] into the world with palette processing. */
     private fun renderPiece(piece: StructurePiece) {
+        val configuredHazard = if (config.hazards.isNotEmpty()) config.hazards[0] else "minecraft:water"
+        val hazardState = when {
+            configuredHazard.contains("lava") -> ModBlocks.HAZARD_LAVA.defaultBlockState()
+            configuredHazard.contains("void") -> ModBlocks.HAZARD_VOID.defaultBlockState()
+            else -> ModBlocks.HAZARD_WATER.defaultBlockState()
+        }
+
         val settings = StructurePlaceSettings()
             .setRotation(piece.rotation)
             .setMirror(Mirror.NONE)
@@ -286,7 +293,7 @@ class DungeonGenerator(
                     paletteBMap = Blocks.CRACKED_STONE_BRICKS.defaultBlockState(),
                     paletteCMap = Blocks.MOSSY_STONE_BRICKS.defaultBlockState(),
                     paletteDMap = Blocks.CHISELED_STONE_BRICKS.defaultBlockState(),
-                    hazardMap = ModBlocks.HAZARD_LAVA.defaultBlockState(),
+                    hazardMap = hazardState,
                     hazardPositions = hazardPositions
                 )
             )
@@ -352,7 +359,15 @@ class DungeonGenerator(
                     net.drachi.cdde.registry.ModBlocks.HAZARD_VOID -> net.drachi.cdde.registry.ModBlocks.HAZARD_WALL_VOID.defaultBlockState()
                     else -> net.drachi.cdde.registry.ModBlocks.HAZARD_WALL_WATER.defaultBlockState()
                 }
-                level.setBlock(above, wallState, 3)
+                for (dy in 1..50) {
+                    val wPos = pos.offset(0, dy, 0)
+                    val state = level.getBlockState(wPos)
+                    if (!state.isSolidRender(level, wPos)) {
+                        level.setBlock(wPos, wallState, 3)
+                    } else {
+                        break
+                    }
+                }
             }
         }
     }

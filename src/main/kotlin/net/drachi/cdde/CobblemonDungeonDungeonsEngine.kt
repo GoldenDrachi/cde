@@ -29,16 +29,41 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
                     val pPos = player.blockPosition()
                     
                     // Check if player stands on any known stair position for their floor
-                    val stairPos = instance.stairPositions[instance.currentFloor + 1]
+                    // Check if player stands on the stair position for the CURRENT floor
+                    val stairPos = instance.stairPositions[instance.currentFloor]
                     if (stairPos != null) {
+                        // stairPos is the center of the 3x3 stairs area
                         val dx = pPos.x - stairPos.x
                         val dz = pPos.z - stairPos.z
                         val dy = pPos.y - stairPos.y
-                        // Check if player is within the 3x3 horizontal bounds, and at or above the stairs bottom level
-                        if (dx in -1..1 && dz in -1..1 && dy >= -4) {
+                        
+                        // Check if player is on the stairs
+                        if (dx in -2..2 && dz in -2..2 && dy >= -4 && dy <= 4) {
                             if (player is net.minecraft.server.level.ServerPlayer) {
                                 net.drachi.cdde.data.DungeonManager.onPlayerInteractStairs(player, stairPos)
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register { entity, world ->
+            val dim = world.dimension().location()
+            if (dim.namespace == "cdde" && dim.path == "dungeon") {
+                if (entity is net.minecraft.world.entity.Mob) {
+                    if (!entity.tags.contains("cdde_spawned")) {
+                        var isPlayerOwned = false
+                        if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity) {
+                            if (entity.pokemon.isPlayerOwned()) {
+                                isPlayerOwned = true
+                            }
+                        } else if (entity is net.minecraft.world.entity.TamableAnimal && entity.isTame) {
+                            isPlayerOwned = true
+                        }
+                        
+                        if (!isPlayerOwned) {
+                            entity.discard()
                         }
                     }
                 }

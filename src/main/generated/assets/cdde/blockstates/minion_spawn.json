@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "cdde:block/minion_spawn"
+    }
+  }
+}

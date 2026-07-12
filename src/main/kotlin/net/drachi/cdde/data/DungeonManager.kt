@@ -427,6 +427,19 @@ object DungeonManager {
                 "title @s title $titleJson"
             )
         }
+
+        // Now that everyone is teleported, wipe the chunks of the floor they just left
+        val oldFloor = instance.currentFloor - 1
+        val floorOriginZ = instance.originZ
+        val floorOriginX = instance.originX + ((oldFloor - 1) * 1000)
+        
+        val gridDim = net.drachi.cdde.generation.DungeonGrid.gridSizeForRooms(instance.config.maxRoomsPerFloor)
+        val maxBlocks = gridDim * net.drachi.cdde.generation.DungeonGrid.CELL_SIZE
+        val bounds = net.minecraft.world.phys.AABB(
+            floorOriginX.toDouble() - 50.0, -64.0, floorOriginZ.toDouble() - 50.0,
+            floorOriginX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, floorOriginZ.toDouble() + maxBlocks.toDouble() + 50.0
+        )
+        clearRegion(level, bounds, instance.config)
     }
 
     fun findSafeSpawn(level: ServerLevel, centerPos: net.minecraft.core.BlockPos): net.minecraft.core.BlockPos {
@@ -435,7 +448,7 @@ object DungeonManager {
             for (x in -r..r) {
                 for (z in -r..r) {
                     if (kotlin.math.abs(x) != r && kotlin.math.abs(z) != r && r != 0) continue
-                    for (y in 0..4) { // Start from level and go up, so we don't sink
+                    for (y in 0..2) { // Restrict to 0..2 so we don't accidentally clip through the ceiling and spawn on the roof
                         val pos = centerPos.offset(x, y, z)
                         val below = level.getBlockState(pos.below())
                         val current = level.getBlockState(pos)

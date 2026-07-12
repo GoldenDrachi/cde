@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "cdde:block/treasure_spawn"
+    }
+  }
+}

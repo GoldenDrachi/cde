@@ -22,7 +22,7 @@ class HazardBlock(val hazardType: HazardType, properties: Properties) : Block(pr
         if (context is EntityCollisionContext) {
             val entity: Entity? = context.entity
 
-            val wallShape = Shapes.create(0.0, 0.0, 0.0, 1.0, 10.0, 1.0)
+            val wallShape = Shapes.block()
             
             if (entity is ServerPlayer) {
                 val selectedSlot = PlayerHazardStateManager.getSelectedSlot(entity.uuid)
@@ -60,5 +60,39 @@ class HazardBlock(val hazardType: HazardType, properties: Properties) : Block(pr
             return net.minecraft.world.level.block.RenderShape.INVISIBLE
         }
         return super.getRenderShape(state)
+    }
+
+    private fun handleHazardContact(level: net.minecraft.world.level.Level, pos: BlockPos, entity: Entity) {
+        if (!level.isClientSide) {
+            var allowed = false
+            if (entity is ServerPlayer) {
+                val selectedSlot = PlayerHazardStateManager.getSelectedSlot(entity.uuid)
+                if (selectedSlot >= 0) {
+                    val party = com.cobblemon.mod.common.Cobblemon.storage.getParty(entity)
+                    val pokemon = party.get(selectedSlot)
+                    if (pokemon != null && HazardMechanic.canTraverse(pokemon, hazardType)) {
+                        allowed = true
+                    }
+                }
+            } else if (entity is PokemonEntity) {
+                if (HazardMechanic.canTraverse(entity.pokemon, hazardType)) {
+                    allowed = true
+                }
+            }
+            if (!allowed && (entity is ServerPlayer || entity is PokemonEntity)) {
+                // Teleport to nearest safe block
+                val safePos = net.drachi.cdde.data.DungeonManager.findSafeSpawn(level as net.minecraft.server.level.ServerLevel, pos)
+                entity.teleportTo(safePos.x.toDouble() + 0.5, safePos.y.toDouble(), safePos.z.toDouble() + 0.5)
+            }
+        }
+    }
+
+    override fun entityInside(state: BlockState, level: net.minecraft.world.level.Level, pos: BlockPos, entity: Entity) {
+        handleHazardContact(level, pos, entity)
+    }
+
+    override fun stepOn(level: net.minecraft.world.level.Level, pos: BlockPos, state: BlockState, entity: Entity) {
+        handleHazardContact(level, pos, entity)
+        super.stepOn(level, pos, state, entity)
     }
 }

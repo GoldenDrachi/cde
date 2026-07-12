@@ -19,7 +19,7 @@ data class DungeonConfig(
     val stairBaseBlock: String = "minecraft:stone_bricks",
     val stairStepBlock: String = "minecraft:stone_brick_stairs",
     val generateHazardSeas: Boolean = false,
-    val biome: String = "minecraft:plains",
+    val biome: String = "minecraft:the_void",
 
     // --- Lifecycle & Persistence Settings ---
     val _comment_serverId: String = "Unique identifier for this server instance (used for cross-server database tracking).",
