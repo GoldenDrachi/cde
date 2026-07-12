@@ -93,7 +93,8 @@ object DungeonCommand {
                 // Pick a spot for the player
                 val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
                 spawnIndex++
-                val pPos = net.minecraft.core.BlockPos(startPosFloor1.x + pOffset.first, startPosFloor1.y, startPosFloor1.z + pOffset.second)
+                val pPosRaw = net.minecraft.core.BlockPos(startPosFloor1.x + pOffset.first, startPosFloor1.y, startPosFloor1.z + pOffset.second)
+                val pPos = net.drachi.cdde.data.DungeonManager.findSafeSpawn(dungeonLevel, pPosRaw)
                 
                 // Teleport player (add 0.5 to center in block)
                 member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
@@ -107,7 +108,8 @@ object DungeonCommand {
                         
                         val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
                         spawnIndex++
-                        val pokePos = net.minecraft.core.BlockPos(startPosFloor1.x + pokeOffset.first, startPosFloor1.y, startPosFloor1.z + pokeOffset.second)
+                        val pokePosRaw = net.minecraft.core.BlockPos(startPosFloor1.x + pokeOffset.first, startPosFloor1.y, startPosFloor1.z + pokeOffset.second)
+                        val pokePos = net.drachi.cdde.data.DungeonManager.findSafeSpawn(dungeonLevel, pokePosRaw)
                         
                         pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
                     }

@@ -278,13 +278,13 @@ object DungeonManager {
                         floorOriginX.toDouble() - 50.0, -64.0, floorOriginZ.toDouble() - 50.0,
                         floorOriginX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, floorOriginZ.toDouble() + maxBlocks.toDouble() + 50.0
                     )
-                    clearRegion(dungeonLevel, bounds)
+                    clearRegion(dungeonLevel, bounds, dungeon.config)
                 }
             }
         }
     }
 
-    fun clearRegion(level: ServerLevel, bounds: AABB) {
+    fun clearRegion(level: ServerLevel, bounds: AABB, config: DungeonConfig?) {
         val minX = bounds.minX.toInt()
         val maxX = bounds.maxX.toInt()
         val minZ = bounds.minZ.toInt()
@@ -312,11 +312,15 @@ object DungeonManager {
 
                     if (!section.hasOnlyAir()) {
                         val registry = level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME)
-                        val defaultBiome = registry.getHolderOrThrow(net.minecraft.world.level.biome.Biomes.THE_VOID)
+                        
+                        // Parse configurable biome or fallback to plains
+                        val biomeId = ResourceLocation.parse(config?.biome ?: "minecraft:plains")
+                        val biomeKey = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BIOME, biomeId)
+                        val targetBiome = registry.getHolder(biomeKey).orElse(registry.getHolderOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS))
                         
                         sections[i] = LevelChunkSection(
                             PalettedContainer(Block.BLOCK_STATE_REGISTRY, airState, PalettedContainer.Strategy.SECTION_STATES),
-                            PalettedContainer(registry.asHolderIdMap(), defaultBiome, PalettedContainer.Strategy.SECTION_BIOMES)
+                            PalettedContainer(registry.asHolderIdMap(), targetBiome, PalettedContainer.Strategy.SECTION_BIOMES)
                         )
                         section.recalcBlockCounts()
                     }
@@ -395,7 +399,8 @@ object DungeonManager {
             // Pick a spot for the player
             val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
             spawnIndex++
-            val pPos = startPos.offset(pOffset.first, 0, pOffset.second)
+            val pPosRaw = startPos.offset(pOffset.first, 0, pOffset.second)
+            val pPos = findSafeSpawn(level, pPosRaw)
             
             // Teleport player (add 0.5 to center in block)
             member.teleportTo(level, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
@@ -409,7 +414,8 @@ object DungeonManager {
                     
                     val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
                     spawnIndex++
-                    val pokePos = startPos.offset(pokeOffset.first, 0, pokeOffset.second)
+                    val pokePosRaw = startPos.offset(pokeOffset.first, 0, pokeOffset.second)
+                    val pokePos = findSafeSpawn(level, pokePosRaw)
                     
                     pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
                 }
@@ -421,5 +427,27 @@ object DungeonManager {
                 "title @s title $titleJson"
             )
         }
+    }
+
+    fun findSafeSpawn(level: ServerLevel, centerPos: net.minecraft.core.BlockPos): net.minecraft.core.BlockPos {
+        val maxRadius = 5
+        for (r in 0..maxRadius) {
+            for (x in -r..r) {
+                for (z in -r..r) {
+                    if (kotlin.math.abs(x) != r && kotlin.math.abs(z) != r && r != 0) continue
+                    for (y in 0..4) { // Start from level and go up, so we don't sink
+                        val pos = centerPos.offset(x, y, z)
+                        val below = level.getBlockState(pos.below())
+                        val current = level.getBlockState(pos)
+                        val above = level.getBlockState(pos.above())
+                        
+                        if (below.isSolidRender(level, pos.below()) && current.getCollisionShape(level, pos).isEmpty && above.getCollisionShape(level, pos.above()).isEmpty) {
+                            return pos
+                        }
+                    }
+                }
+            }
+        }
+        return centerPos // Fallback
     }
 }
