@@ -448,7 +448,8 @@ object DungeonManager {
             for (x in -r..r) {
                 for (z in -r..r) {
                     if (kotlin.math.abs(x) != r && kotlin.math.abs(z) != r && r != 0) continue
-                    for (y in 0..2) { // Restrict to 0..2 so we don't accidentally clip through the ceiling and spawn on the roof
+                    val yOffsets = listOf(0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5)
+                    for (y in yOffsets) { // Check downwards to find floor, and upwards to find clearance
                         val pos = centerPos.offset(x, y, z)
                         val below = level.getBlockState(pos.below())
                         val current = level.getBlockState(pos)
