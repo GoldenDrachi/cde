@@ -362,9 +362,9 @@ class DungeonGenerator(
                 for (dy in 1..50) {
                     val wPos = pos.offset(0, dy, 0)
                     val state = level.getBlockState(wPos)
-                    if (!state.isSolidRender(level, wPos)) {
+                    if (state.isAir) {
                         level.setBlock(wPos, wallState, 3)
-                    } else {
+                    } else if (state.isSolidRender(level, wPos)) {
                         break
                     }
                 }

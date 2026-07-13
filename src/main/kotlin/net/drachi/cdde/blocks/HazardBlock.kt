@@ -80,9 +80,14 @@ class HazardBlock(val hazardType: HazardType, properties: Properties) : Block(pr
                 }
             }
             if (!allowed && (entity is ServerPlayer || entity is PokemonEntity)) {
-                // Teleport to nearest safe block
-                val safePos = net.drachi.cdde.data.DungeonManager.findSafeSpawn(level as net.minecraft.server.level.ServerLevel, pos)
-                entity.teleportTo(safePos.x.toDouble() + 0.5, safePos.y.toDouble(), safePos.z.toDouble() + 0.5)
+                // Ensure the entity is actually significantly inside the block, not just touching the edge
+                val dx = Math.abs(entity.x - (pos.x + 0.5))
+                val dz = Math.abs(entity.z - (pos.z + 0.5))
+                if (dx < 0.4 && dz < 0.4) {
+                    // Teleport to nearest safe block
+                    val safePos = net.drachi.cdde.data.DungeonManager.findSafeSpawn(level as net.minecraft.server.level.ServerLevel, pos)
+                    entity.teleportTo(safePos.x.toDouble() + 0.5, safePos.y.toDouble(), safePos.z.toDouble() + 0.5)
+                }
             }
         }
     }
