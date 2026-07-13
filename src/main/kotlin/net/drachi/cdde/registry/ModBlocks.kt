@@ -27,9 +27,9 @@ object ModBlocks {
     val HAZARD_VOID = registerBlock("hazard_void", net.drachi.cdde.blocks.HazardBlock(net.drachi.cdde.mechanics.HazardType.VOID, BlockBehaviour.Properties.ofFullCopy(Blocks.AIR).noCollission().noLootTable().noOcclusion()))
 
 
-    val HAZARD_WALL_WATER = registerBlock("hazard_wall_water", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.WATER, BlockBehaviour.Properties.ofFullCopy(Blocks.AIR).noLootTable().noOcclusion()))
-    val HAZARD_WALL_LAVA = registerBlock("hazard_wall_lava", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.LAVA, BlockBehaviour.Properties.ofFullCopy(Blocks.AIR).noLootTable().noOcclusion()))
-    val HAZARD_WALL_VOID = registerBlock("hazard_wall_void", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.VOID, BlockBehaviour.Properties.ofFullCopy(Blocks.AIR).noLootTable().noOcclusion()))
+    val HAZARD_WALL_WATER = registerBlock("hazard_wall_water", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.WATER, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion()))
+    val HAZARD_WALL_LAVA = registerBlock("hazard_wall_lava", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.LAVA, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion()))
+    val HAZARD_WALL_VOID = registerBlock("hazard_wall_void", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.VOID, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion()))
 
 
     private fun registerBlock(name: String, block: Block): Block {

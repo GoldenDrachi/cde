@@ -47,9 +47,8 @@ class HazardBlock(val hazardType: HazardType, properties: Properties) : Block(pr
                 return wallShape
             }
 
-            // Default behavior for other entities (like items or standard mobs)
-            // returning Shapes.empty() so items fall in, etc.
-            return Shapes.empty()
+            // Default behavior for other entities (like standard mobs)
+            return wallShape
         }
 
         return Shapes.block()
@@ -64,6 +63,13 @@ class HazardBlock(val hazardType: HazardType, properties: Properties) : Block(pr
 
     private fun handleHazardContact(level: net.minecraft.world.level.Level, pos: BlockPos, entity: Entity) {
         if (!level.isClientSide) {
+            if (entity is net.minecraft.world.entity.item.ItemEntity) {
+                if (hazardType == HazardType.LAVA || hazardType == HazardType.VOID) {
+                    entity.discard()
+                }
+                return
+            }
+
             var allowed = false
             if (entity is ServerPlayer) {
                 val selectedSlot = PlayerHazardStateManager.getSelectedSlot(entity.uuid)

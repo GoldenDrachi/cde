@@ -13,9 +13,18 @@ import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import net.minecraft.world.level.block.RenderShape
+import net.minecraft.world.level.block.state.StateDefinition
+import net.minecraft.world.level.block.state.properties.BlockStateProperties
 
 class HazardWallBlock(val type: HazardType, properties: Properties) : Block(properties) {
+
+    init {
+        registerDefaultState(stateDefinition.any().setValue(BlockStateProperties.WATERLOGGED, false))
+    }
+
+    override fun createBlockStateDefinition(builder: StateDefinition.Builder<Block, BlockState>) {
+        builder.add(BlockStateProperties.WATERLOGGED)
+    }
 
     override fun getRenderShape(state: BlockState): RenderShape {
         return RenderShape.INVISIBLE
@@ -58,11 +67,11 @@ class HazardWallBlock(val type: HazardType, properties: Properties) : Block(prop
                     }
                     return wallShape
                 }
-
-                // Default behavior for other entities (like items or standard mobs)
+            } else if (entity is net.minecraft.world.entity.item.ItemEntity) {
                 return Shapes.empty()
             }
-            // Default behavior for other entities, or if entity is null (e.g. physics queries during jump)
+            
+            // Default behavior for other entities (like standard mobs), or if entity is null (e.g. physics queries during jump)
             return wallShape
         }
         return Shapes.block()
@@ -76,12 +85,5 @@ class HazardWallBlock(val type: HazardType, properties: Properties) : Block(prop
         return 1.0f
     }
 
-    override fun getShape(
-        state: BlockState,
-        level: BlockGetter,
-        pos: BlockPos,
-        context: CollisionContext
-    ): VoxelShape {
-        return Shapes.empty()
-    }
+
 }
