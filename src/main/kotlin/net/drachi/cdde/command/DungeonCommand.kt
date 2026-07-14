@@ -200,6 +200,9 @@ object DungeonCommand {
         // Return player
         val returnPos = instance.returnLocations[player.uuid]
         val overworld = source.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
+        
+        player.portalCooldown = 100 // Prevent immediate re-entry if they return onto a portal block
+        
         if (returnPos != null && overworld != null) {
             player.teleportTo(overworld, returnPos.x.toDouble(), returnPos.y.toDouble(), returnPos.z.toDouble(), player.yRot, player.xRot)
         } else if (overworld != null) {

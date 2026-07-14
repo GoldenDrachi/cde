@@ -24,6 +24,8 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
         }
 
         ServerTickEvents.START_SERVER_TICK.register { server ->
+            net.drachi.cdde.data.DungeonManager.tickDungeonLifecycle(server)
+            
             for (player in server.playerList.players) {
                 val instance = net.drachi.cdde.data.DungeonManager.getActiveDungeon(player)
                 if (instance != null) {
@@ -65,6 +67,46 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
                         
                         if (!isPlayerOwned) {
                             entity.discard()
+                        }
+                    }
+                }
+            }
+        }
+
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register { handler, sender, server ->
+            val player = handler.player
+            val evictedPos = net.drachi.cdde.database.DatabaseManager.getAndRemoveEvictedPlayer(player.uuid)
+            
+            if (evictedPos != null) {
+                val overworld = server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
+                if (overworld != null) {
+                    player.portalCooldown = 100
+                    player.teleportTo(overworld, evictedPos.x.toDouble(), evictedPos.y.toDouble(), evictedPos.z.toDouble(), player.yRot, player.xRot)
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Your dungeon ran out of time or was abandoned. You were returned to safety.").withStyle(net.minecraft.ChatFormatting.RED))
+                }
+            } else {
+                val dim = player.level().dimension().location()
+                if (dim.namespace == "cdde" && dim.path == "dungeon") {
+                    val instance = DungeonManager.getActiveDungeon(player)
+                    if (instance != null) {
+                        val playerX = player.blockPosition().x
+                        val expectedMinX = instance.originX + ((instance.currentFloor - 1) * 1000)
+                        val expectedMaxX = expectedMinX + 1000
+                        
+                        if (playerX < expectedMinX || playerX > expectedMaxX) {
+                            val startPos = instance.floorStartPositions[instance.currentFloor]
+                            if (startPos != null) {
+                                val pPos = DungeonManager.findSafeSpawn(player.serverLevel(), startPos)
+                                player.teleportTo(pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5)
+                                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Your team advanced to floor ${instance.currentFloor} while you were offline! You have been moved to their floor.").withStyle(net.minecraft.ChatFormatting.YELLOW))
+                            }
+                        }
+                    } else {
+                        // Safety fallback for orphaned players
+                        val overworld = server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
+                        if (overworld != null) {
+                            val spawn = overworld.sharedSpawnPos
+                            player.teleportTo(overworld, spawn.x.toDouble(), spawn.y.toDouble(), spawn.z.toDouble(), player.yRot, player.xRot)
                         }
                     }
                 }

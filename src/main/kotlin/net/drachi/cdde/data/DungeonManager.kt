@@ -190,8 +190,13 @@ object DungeonManager {
 
     fun allocateInstance(config: DungeonConfig): ActiveDungeon {
         val id = UUID.randomUUID()
-        val maxZ = net.drachi.cdde.database.DatabaseManager.getMaxOriginZ()
-        val nextZ = if (maxZ == 0 && activeDungeons.isEmpty()) 0 else maxZ + 10000
+        
+        // Find the lowest available Z coordinate that is a multiple of 10000
+        var nextZ = 0
+        val usedZs = activeDungeons.values.map { it.originZ }.toSet()
+        while (usedZs.contains(nextZ)) {
+            nextZ += 10000
+        }
         
         val instance = ActiveDungeon(
             instanceId = id,
@@ -211,23 +216,28 @@ object DungeonManager {
         
         val toRemove = mutableListOf<UUID>()
         for ((id, dungeon) in activeDungeons) {
-            var hasOnlinePlayers = false
-            for (playerUuid in dungeon.returnLocations.keys) {
-                if (server.playerList.getPlayer(playerUuid) != null) {
-                    hasOnlinePlayers = true
-                    break
-                }
-            }
-            
-            if (hasOnlinePlayers) {
-                dungeon.lastActiveTime = now
-                if (server.tickCount % 200 == 0) { // save every 10 seconds
-                    net.drachi.cdde.database.DatabaseManager.saveActiveDungeon(dungeon, ConfigManager.globalConfig.serverId)
-                }
+            if (dungeon.returnLocations.isEmpty()) {
+                CobblemonDungeonDungeonsEngine.logger.info("Dungeon $id is completely empty (all players left) and is being cleared.")
+                toRemove.add(id)
             } else {
-                if (now - dungeon.lastActiveTime > timeoutMs) {
-                    CobblemonDungeonDungeonsEngine.logger.info("Dungeon $id has timed out and is being cleared.")
-                    toRemove.add(id)
+                var hasOnlinePlayers = false
+                for (playerUuid in dungeon.returnLocations.keys) {
+                    if (server.playerList.getPlayer(playerUuid) != null) {
+                        hasOnlinePlayers = true
+                        break
+                    }
+                }
+                
+                if (hasOnlinePlayers) {
+                    dungeon.lastActiveTime = now
+                    if (server.tickCount % 200 == 0) { // save every 10 seconds
+                        net.drachi.cdde.database.DatabaseManager.saveActiveDungeon(dungeon, ConfigManager.globalConfig.serverId)
+                    }
+                } else {
+                    if (now - dungeon.lastActiveTime > timeoutMs) {
+                        CobblemonDungeonDungeonsEngine.logger.info("Dungeon $id has timed out and is being cleared.")
+                        toRemove.add(id)
+                    }
                 }
             }
         }
