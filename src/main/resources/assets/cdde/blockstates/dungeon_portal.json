@@ -1,6 +1,5 @@
 {
   "variants": {
-    "axis=x": { "model": "cdde:block/dungeon_portal_ns" },
-    "axis=z": { "model": "cdde:block/dungeon_portal_ew" }
+    "": { "model": "cdde:block/dungeon_portal" }
   }
 }

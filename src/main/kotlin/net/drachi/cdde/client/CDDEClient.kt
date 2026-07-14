@@ -36,11 +36,11 @@ class CDDEClient : ClientModInitializer {
                 val be = world.getBlockEntity(pos) as? net.drachi.cdde.blocks.DungeonPortalBlockEntity
                 if (be != null) {
                     val config = net.drachi.cdde.data.DungeonManager.configs[be.configId]
-                    if (config != null) return@register config.portalColor
-                    return@register be.colorHex
+                    if (config != null) return@register config.portalColor or -0x1000000
+                    return@register be.colorHex or -0x1000000
                 }
             }
-            0x800080 // Default purple fallback
+            0x800080 or -0x1000000 // Default purple fallback
         }, ModBlocks.DUNGEON_PORTAL)
 
         net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry.ITEM.register({ stack, tintIndex ->
@@ -49,11 +49,11 @@ class CDDEClient : ClientModInitializer {
                 if (!data.isEmpty) {
                     val tag = data.copyTag()
                     if (tag.contains("ColorHex")) {
-                        return@register tag.getInt("ColorHex")
+                        return@register tag.getInt("ColorHex") or -0x1000000
                     }
                 }
             }
-            0x800080 // Default purple
+            0x800080 or -0x1000000 // Default purple
         }, ModBlocks.DUNGEON_PORTAL)
 
         NetworkHandler.CHANNEL.registerClientbound(net.drachi.cdde.network.OpenConfigScreenPacket::class.java) { payload, context ->

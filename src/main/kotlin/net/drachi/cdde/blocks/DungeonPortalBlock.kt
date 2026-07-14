@@ -17,34 +17,19 @@ import net.drachi.cdde.data.DungeonManager
 import net.drachi.cdde.generation.DungeonGenerator
 
 class DungeonPortalBlock(properties: Properties) : Block(properties), EntityBlock {
-    companion object {
-        val AXIS = net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_AXIS
-        protected val X_AABB = net.minecraft.world.level.block.Block.box(0.0, 0.0, 6.0, 16.0, 16.0, 10.0)
-        protected val Z_AABB = net.minecraft.world.level.block.Block.box(6.0, 0.0, 0.0, 10.0, 16.0, 16.0)
-    }
-
     init {
-        registerDefaultState(stateDefinition.any().setValue(AXIS, net.minecraft.core.Direction.Axis.X))
+        // No custom default state needed
     }
 
-    override fun createBlockStateDefinition(builder: net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState>) {
-        builder.add(AXIS)
-    }
-
-    override fun getStateForPlacement(context: net.minecraft.world.item.context.BlockPlaceContext): BlockState? {
-        return defaultBlockState().setValue(AXIS, context.horizontalDirection.axis)
-    }
-
-    override fun getShape(state: BlockState, level: BlockGetter, pos: BlockPos, context: CollisionContext): VoxelShape {
-        return when (state.getValue(AXIS)) {
-            net.minecraft.core.Direction.Axis.Z -> Z_AABB
-            else -> X_AABB
-        }
-    }
 
     // The portal block should not have collision so players can walk into it
     override fun getCollisionShape(state: BlockState, level: BlockGetter, pos: BlockPos, context: CollisionContext): VoxelShape {
         return net.minecraft.world.phys.shapes.Shapes.empty()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun skipRendering(state: BlockState, adjacentBlockState: BlockState, direction: net.minecraft.core.Direction): Boolean {
+        return adjacentBlockState.`is`(this) || super.skipRendering(state, adjacentBlockState, direction)
     }
 
     override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity? {
