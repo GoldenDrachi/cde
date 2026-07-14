@@ -17,7 +17,7 @@ class CDDEClient : ClientModInitializer {
             if (client.level != null && client.player != null) {
                 val currentSlot = CobblemonClient.storage.selectedSlot
                 if (currentSlot != lastSelectedSlot) {
-                    if (ClientPlayNetworking.canSend(net.drachi.cdde.network.SyncSelectedSlotPayload.ID)) {
+                    if (ClientPlayNetworking.canSend(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cdde", "main"))) {
                         lastSelectedSlot = currentSlot
                         NetworkHandler.sendSyncSelectedSlot(currentSlot)
                     }
@@ -56,8 +56,8 @@ class CDDEClient : ClientModInitializer {
             0x800080 // Default purple
         }, ModBlocks.DUNGEON_PORTAL)
 
-        ClientPlayNetworking.registerGlobalReceiver(net.drachi.cdde.network.OpenConfigScreenPacket.ID) { payload, context ->
-            val client = context.client()
+        NetworkHandler.CHANNEL.registerClientbound(net.drachi.cdde.network.OpenConfigScreenPacket::class.java) { payload, context ->
+            val client = net.minecraft.client.Minecraft.getInstance()
             client.execute {
                 val parsedConfig = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<net.drachi.cdde.data.DungeonConfig>(payload.configJson)
                 client.setScreen(net.drachi.cdde.client.ConfigEditorScreen(parsedConfig))

@@ -1,46 +1,28 @@
 package net.drachi.cdde.network
 
-import net.drachi.cdde.CobblemonDungeonDungeonsEngine
+import io.wispforest.owo.network.OwoNetChannel
 import net.drachi.cdde.mechanics.PlayerHazardStateManager
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
-import net.minecraft.network.RegistryFriendlyByteBuf
-import net.minecraft.network.codec.ByteBufCodecs
-import net.minecraft.network.codec.StreamCodec
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerPlayer
 
-data class SyncSelectedSlotPayload(val slotIndex: Int) : CustomPacketPayload {
-    override fun type(): CustomPacketPayload.Type<out CustomPacketPayload> = ID
-
-    companion object {
-        val ID = CustomPacketPayload.Type<SyncSelectedSlotPayload>(ResourceLocation.fromNamespaceAndPath("cdde", "sync_selected_slot"))
-
-        val CODEC: StreamCodec<RegistryFriendlyByteBuf, SyncSelectedSlotPayload> = StreamCodec.of(
-            { buf, payload -> buf.writeInt(payload.slotIndex) },
-            { buf -> SyncSelectedSlotPayload(buf.readInt()) }
-        )
-    }
-}
+@JvmRecord
+data class SyncSelectedSlotPayload(val slotIndex: Int)
 
 object NetworkHandler {
+    val CHANNEL: OwoNetChannel = OwoNetChannel.create(ResourceLocation.fromNamespaceAndPath("cdde", "main"))
+
     fun registerPayloads() {
-        PayloadTypeRegistry.playC2S().register(SyncSelectedSlotPayload.ID, SyncSelectedSlotPayload.CODEC)
-        PayloadTypeRegistry.playS2C().register(OpenConfigScreenPacket.ID, OpenConfigScreenPacket.CODEC)
-        PayloadTypeRegistry.playC2S().register(SaveConfigPacket.ID, SaveConfigPacket.CODEC)
-        
-        ServerPlayNetworking.registerGlobalReceiver(SyncSelectedSlotPayload.ID) { payload, context ->
-            val player = context.player()
-            context.server().execute {
+        CHANNEL.registerServerbound(SyncSelectedSlotPayload::class.java) { payload, context ->
+            val player = context.player() as? ServerPlayer ?: return@registerServerbound
+            player.server.execute {
                 PlayerHazardStateManager.setSelectedSlot(player.uuid, payload.slotIndex)
             }
         }
 
-        ServerPlayNetworking.registerGlobalReceiver(SaveConfigPacket.ID) { payload, context ->
-            val player = context.player()
-            if (!player.hasPermissions(2)) return@registerGlobalReceiver
-            context.server().execute {
+        CHANNEL.registerServerbound(SaveConfigPacket::class.java) { payload, context ->
+            val player = context.player() as? ServerPlayer ?: return@registerServerbound
+            if (!player.hasPermissions(2)) return@registerServerbound
+            player.server.execute {
                 try {
                     val config = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<net.drachi.cdde.data.DungeonConfig>(payload.configJson)
                     net.drachi.cdde.data.ConfigManager.saveDungeonConfig(config)
@@ -53,6 +35,6 @@ object NetworkHandler {
     }
 
     fun sendSyncSelectedSlot(slotIndex: Int) {
-        ClientPlayNetworking.send(SyncSelectedSlotPayload(slotIndex))
+        CHANNEL.clientHandle().send(SyncSelectedSlotPayload(slotIndex))
     }
 }

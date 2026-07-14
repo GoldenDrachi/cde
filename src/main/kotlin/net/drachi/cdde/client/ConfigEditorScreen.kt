@@ -427,7 +427,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
         
         val saveBtn = Components.button(Component.translatable("gui.cdde.config.save")) {
             val json = Json { ignoreUnknownKeys = true }.encodeToString(config)
-            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(net.drachi.cdde.network.SaveConfigPacket(json))
+            net.drachi.cdde.network.NetworkHandler.CHANNEL.clientHandle().send(net.drachi.cdde.network.SaveConfigPacket(json))
             net.minecraft.client.Minecraft.getInstance().setScreen(null)
         }
         val cancelBtn = Components.button(Component.translatable("gui.cdde.config.cancel")) {

@@ -271,7 +271,7 @@ object DungeonCommand {
         }
         val config = DungeonConfig(id = id)
         val jsonStr = kotlinx.serialization.json.Json { encodeDefaults = true }.encodeToString(DungeonConfig.serializer(), config)
-        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, net.drachi.cdde.network.OpenConfigScreenPacket(id, jsonStr))
+        net.drachi.cdde.network.NetworkHandler.CHANNEL.serverHandle(player).send(net.drachi.cdde.network.OpenConfigScreenPacket(id, jsonStr))
         return 1
     }
 
@@ -283,7 +283,7 @@ object DungeonCommand {
             return 0
         }
         val jsonStr = kotlinx.serialization.json.Json { encodeDefaults = true }.encodeToString(DungeonConfig.serializer(), config)
-        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, net.drachi.cdde.network.OpenConfigScreenPacket(id, jsonStr))
+        net.drachi.cdde.network.NetworkHandler.CHANNEL.serverHandle(player).send(net.drachi.cdde.network.OpenConfigScreenPacket(id, jsonStr))
         return 1
     }
 }
