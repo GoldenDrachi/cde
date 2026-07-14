@@ -450,4 +450,34 @@ object DungeonManager {
         }
         return centerPos // Fallback
     }
+
+    fun getSafeOverworldReturn(level: ServerLevel, returnPos: net.minecraft.core.BlockPos): net.minecraft.core.BlockPos {
+        val blockState = level.getBlockState(returnPos)
+        if (blockState.block is net.drachi.cdde.blocks.DungeonPortalBlock) {
+            // Search in a small radius for a safe spot that is NOT a portal block
+            val maxRadius = 3
+            for (r in 1..maxRadius) {
+                for (x in -r..r) {
+                    for (z in -r..r) {
+                        if (kotlin.math.abs(x) != r && kotlin.math.abs(z) != r) continue
+                        val yOffsets = listOf(0, 1, -1, 2, -2)
+                        for (y in yOffsets) {
+                            val pos = returnPos.offset(x, y, z)
+                            val below = level.getBlockState(pos.below())
+                            val current = level.getBlockState(pos)
+                            val above = level.getBlockState(pos.above())
+                            
+                            if (below.isSolidRender(level, pos.below()) && 
+                                current.getCollisionShape(level, pos).isEmpty && 
+                                above.getCollisionShape(level, pos.above()).isEmpty &&
+                                current.block !is net.drachi.cdde.blocks.DungeonPortalBlock) {
+                                return pos
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return returnPos
+    }
 }

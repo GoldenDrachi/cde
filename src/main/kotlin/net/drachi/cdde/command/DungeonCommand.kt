@@ -127,9 +127,10 @@ object DungeonCommand {
             var spawnIndex = 0
 
             playersToTeleport.forEach { member ->
-                // Record their return location
-                instance.returnLocations[member.uuid] = member.blockPosition()
-                net.drachi.cdde.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, member.blockPosition())
+                // Pre-calculate safe return location while overworld chunk is fully loaded
+                val safeReturn = net.drachi.cdde.data.DungeonManager.getSafeOverworldReturn(source.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)!!, member.blockPosition())
+                instance.returnLocations[member.uuid] = safeReturn
+                net.drachi.cdde.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, safeReturn)
 
                 // Pick a spot for the player
                 val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
@@ -204,10 +205,10 @@ object DungeonCommand {
         player.portalCooldown = 100 // Prevent immediate re-entry if they return onto a portal block
         
         if (returnPos != null && overworld != null) {
-            player.teleportTo(overworld, returnPos.x.toDouble(), returnPos.y.toDouble(), returnPos.z.toDouble(), player.yRot, player.xRot)
+            player.teleportTo(overworld, returnPos.x.toDouble() + 0.5, returnPos.y.toDouble(), returnPos.z.toDouble() + 0.5, player.yRot, player.xRot)
         } else if (overworld != null) {
             val spawn = overworld.sharedSpawnPos
-            player.teleportTo(overworld, spawn.x.toDouble(), spawn.y.toDouble(), spawn.z.toDouble(), player.yRot, player.xRot)
+            player.teleportTo(overworld, spawn.x.toDouble() + 0.5, spawn.y.toDouble(), spawn.z.toDouble() + 0.5, player.yRot, player.xRot)
         }
 
         // Remove player from the dungeon tracking

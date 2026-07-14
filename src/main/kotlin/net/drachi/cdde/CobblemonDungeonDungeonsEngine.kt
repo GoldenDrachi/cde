@@ -81,7 +81,7 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
                 val overworld = server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
                 if (overworld != null) {
                     player.portalCooldown = 100
-                    player.teleportTo(overworld, evictedPos.x.toDouble(), evictedPos.y.toDouble(), evictedPos.z.toDouble(), player.yRot, player.xRot)
+                    player.teleportTo(overworld, evictedPos.x.toDouble() + 0.5, evictedPos.y.toDouble(), evictedPos.z.toDouble() + 0.5, player.yRot, player.xRot)
                     player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Your dungeon ran out of time or was abandoned. You were returned to safety.").withStyle(net.minecraft.ChatFormatting.RED))
                 }
             } else {

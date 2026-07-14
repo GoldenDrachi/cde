@@ -98,7 +98,11 @@ class DungeonPortalBlock(properties: Properties) : Block(properties), EntityBloc
             playersToTeleport.forEach { member ->
                 // Set their cooldown to prevent re-triggering upon entry
                 member.portalCooldown = 100
-                instance.returnLocations[member.uuid] = member.blockPosition()
+                
+                // Pre-calculate safe return location while overworld chunk is fully loaded
+                val safeReturn = DungeonManager.getSafeOverworldReturn(level as net.minecraft.server.level.ServerLevel, member.blockPosition())
+                instance.returnLocations[member.uuid] = safeReturn
+                net.drachi.cdde.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, safeReturn)
                 
                 val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
                 spawnIndex++
