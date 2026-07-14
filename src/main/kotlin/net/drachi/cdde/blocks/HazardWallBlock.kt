@@ -15,6 +15,7 @@ import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
+import net.minecraft.world.level.block.RenderShape
 
 class HazardWallBlock(val type: HazardType, properties: Properties) : Block(properties) {
 
@@ -26,8 +27,34 @@ class HazardWallBlock(val type: HazardType, properties: Properties) : Block(prop
         builder.add(BlockStateProperties.WATERLOGGED)
     }
 
+    override fun getShape(
+        state: BlockState,
+        level: BlockGetter,
+        pos: BlockPos,
+        context: CollisionContext
+    ): VoxelShape {
+        return Shapes.empty()
+    }
+
     override fun getRenderShape(state: BlockState): RenderShape {
         return RenderShape.INVISIBLE
+    }
+    
+    override fun getVisualShape(
+        state: BlockState,
+        level: BlockGetter,
+        pos: BlockPos,
+        context: CollisionContext
+    ): VoxelShape {
+        return Shapes.empty()
+    }
+    
+    override fun getInteractionShape(
+        state: BlockState,
+        level: BlockGetter,
+        pos: BlockPos
+    ): VoxelShape {
+        return Shapes.empty()
     }
 
     override fun getCollisionShape(

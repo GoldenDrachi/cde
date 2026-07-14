@@ -8,6 +8,7 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockBehaviour
+import net.drachi.cdde.blocks.DungeonPortalBlock
 
 object ModBlocks {
 
@@ -21,16 +22,23 @@ object ModBlocks {
     val TREASURE_SPAWN = registerBlock("treasure_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
     val BOSS_SPAWN = registerBlock("boss_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
     val MINION_SPAWN = registerBlock("minion_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
+    val END_STAIR_SPAWN = registerBlock("end_stair_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
     val TREASURE_DOOR = registerBlock("treasure_door", net.drachi.cdde.blocks.TreasureDoorBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.STONE_BRICKS)))
+    val BOSS_DOOR = registerBlock("boss_door", net.drachi.cdde.blocks.BossDoorBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.STONE_BRICKS)))
     val HAZARD_WATER = registerBlock("hazard_water", net.drachi.cdde.blocks.HazardBlock(net.drachi.cdde.mechanics.HazardType.WATER, BlockBehaviour.Properties.ofFullCopy(Blocks.WATER).noCollission().noLootTable().noOcclusion()))
     val HAZARD_LAVA = registerBlock("hazard_lava", net.drachi.cdde.blocks.HazardBlock(net.drachi.cdde.mechanics.HazardType.LAVA, BlockBehaviour.Properties.ofFullCopy(Blocks.LAVA).noCollission().noLootTable().noOcclusion()))
     val HAZARD_VOID = registerBlock("hazard_void", net.drachi.cdde.blocks.HazardBlock(net.drachi.cdde.mechanics.HazardType.VOID, BlockBehaviour.Properties.ofFullCopy(Blocks.AIR).noCollission().noLootTable().noOcclusion()))
 
 
-    val HAZARD_WALL_WATER = registerBlock("hazard_wall_water", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.WATER, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion()))
-    val HAZARD_WALL_LAVA = registerBlock("hazard_wall_lava", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.LAVA, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion()))
-    val HAZARD_WALL_VOID = registerBlock("hazard_wall_void", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.VOID, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion()))
+    val HAZARD_WALL_WATER = registerBlock("hazard_wall_water", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.WATER, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion().isSuffocating { _, _, _ -> false }.isViewBlocking { _, _, _ -> false }))
+    val HAZARD_WALL_LAVA = registerBlock("hazard_wall_lava", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.LAVA, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion().isSuffocating { _, _, _ -> false }.isViewBlocking { _, _, _ -> false }))
+    val HAZARD_WALL_VOID = registerBlock("hazard_wall_void", net.drachi.cdde.blocks.HazardWallBlock(net.drachi.cdde.mechanics.HazardType.VOID, BlockBehaviour.Properties.ofFullCopy(Blocks.BARRIER).noLootTable().noOcclusion().isSuffocating { _, _, _ -> false }.isViewBlocking { _, _, _ -> false }))
 
+
+    val DUNGEON_PORTAL: Block = registerBlock(
+        "dungeon_portal",
+        DungeonPortalBlock(BlockBehaviour.Properties.of().noCollission().strength(-1.0f, 3600000.0f).noLootTable().noOcclusion().lightLevel { 11 })
+    )
 
     private fun registerBlock(name: String, block: Block): Block {
         registerBlockItem(name, block)

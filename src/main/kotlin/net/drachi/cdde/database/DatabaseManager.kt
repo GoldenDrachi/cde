@@ -14,13 +14,7 @@ import java.util.UUID
 object DatabaseManager {
     private var dataSource: HikariDataSource? = null
 
-    fun initialize() {
-        val config = DungeonManager.configs["default"] ?: DungeonManager.configs.values.firstOrNull()
-        if (config == null) {
-            CobblemonDungeonDungeonsEngine.logger.error("No DungeonConfig found, cannot initialize database.")
-            return
-        }
-
+    fun initialize(config: net.drachi.cdde.data.GlobalConfig) {
         val hikariConfig = HikariConfig()
         
         if (config.databaseType.equals("sqlite", ignoreCase = true)) {
@@ -81,11 +75,19 @@ object DatabaseManager {
             )
         """.trimIndent()
 
+        val sqlConfigs = """
+            CREATE TABLE IF NOT EXISTS dungeon_configs (
+                config_id VARCHAR(100) PRIMARY KEY,
+                config_data TEXT
+            )
+        """.trimIndent()
+
         getConnection()?.use { conn ->
             conn.createStatement().use { stmt ->
                 stmt.execute(sqlDungeons)
                 stmt.execute(sqlPlayers)
                 stmt.execute(sqlEvicted)
+                stmt.execute(sqlConfigs)
             }
         }
     }
@@ -301,5 +303,54 @@ object DatabaseManager {
             }
         }
         return pos
+    }
+
+    fun loadAllDungeonConfigs(): Map<String, String> {
+        val map = mutableMapOf<String, String>()
+        val sql = "SELECT * FROM dungeon_configs"
+        getConnection()?.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                val rs = stmt.executeQuery()
+                while (rs.next()) {
+                    map[rs.getString("config_id")] = rs.getString("config_data")
+                }
+            }
+        }
+        return map
+    }
+
+    fun saveDungeonConfig(configId: String, configData: String) {
+        val sql = """
+            INSERT INTO dungeon_configs (config_id, config_data)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE 
+            config_data = VALUES(config_data)
+        """.trimIndent()
+
+        val sqliteSql = """
+            INSERT INTO dungeon_configs (config_id, config_data)
+            VALUES (?, ?)
+            ON CONFLICT(config_id) DO UPDATE SET 
+            config_data = excluded.config_data
+        """.trimIndent()
+
+        getConnection()?.use { conn ->
+            val query = if (conn.metaData.databaseProductName.contains("SQLite", true)) sqliteSql else sql
+            conn.prepareStatement(query).use { stmt ->
+                stmt.setString(1, configId)
+                stmt.setString(2, configData)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    fun deleteDungeonConfig(configId: String) {
+        val sql = "DELETE FROM dungeon_configs WHERE config_id = ?"
+        getConnection()?.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, configId)
+                stmt.executeUpdate()
+            }
+        }
     }
 }

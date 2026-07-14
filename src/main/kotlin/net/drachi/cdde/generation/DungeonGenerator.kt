@@ -39,8 +39,11 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 class DungeonGenerator(
     private val level: ServerLevel,
     private val origin: BlockPos,
-    private val config: DungeonConfig
+    private val config: DungeonConfig,
+    private val floor: Int
 ) {
+    val floorConfig = config.getFloorConfig(floor)
+    
     var stairPosition: BlockPos? = null
     var startPosition: BlockPos? = null
     private val placedPieces = mutableListOf<StructurePiece>()
@@ -55,13 +58,16 @@ class DungeonGenerator(
         enclosedWallCells.clear()
         DungeonManager.clearSpawns()
 
-        val dim = DungeonGrid.gridSizeForRooms(config.maxRoomsPerFloor)
+        val isEndFloor = floor == config.amountOfFloors && config.endFloorType != net.drachi.cdde.data.EndFloorType.NORMAL
+        val finalMaxRooms = if (isEndFloor) 1 else floorConfig.maxRooms
+        
+        val dim = DungeonGrid.gridSizeForRooms(finalMaxRooms)
         val maxBlocks = dim * DungeonGrid.CELL_SIZE
         val bounds = net.minecraft.world.phys.AABB(
             origin.x.toDouble() - 50.0, -64.0, origin.z.toDouble() - 50.0,
             origin.x.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, origin.z.toDouble() + maxBlocks.toDouble() + 50.0
         )
-        DungeonManager.clearRegion(level, bounds, config)
+        DungeonManager.clearRegion(level, bounds, config, floorConfig)
 
         // ── 0. Resolve Theme ──────────────────────────────────────────────
         val theme = DungeonManager.availableRooms.keys.firstOrNull() ?: run {
@@ -84,12 +90,12 @@ class DungeonGenerator(
         mapper.loadPools(hallwayIds, endIds)
 
         // ── 2. Scatter Rooms ──────────────────────────────────────────────
-        val roomsPlaced = scatterRooms(grid, roomIds, mapper)
+        val roomsPlaced = scatterRooms(grid, roomIds, mapper, finalMaxRooms)
 
         // ── 3. Logical Maze Generation ────────────────────────────────────
         grid.fillMazes()
         grid.connectRegions()
-        grid.removeDeadEnds(config.deadEndPrunePercent)
+        grid.removeDeadEnds(floorConfig.deadEndPrunePercent)
 
         // Compute enclosed wall cells after logical maze is complete
         enclosedWallCells.addAll(mapper.computeEnclosedWallCells(grid))
@@ -97,7 +103,7 @@ class DungeonGenerator(
         CobblemonDungeonDungeonsEngine.logger.info("Grid state after maze generation:\n${grid.toAscii()}")
 
         // ── 4. Map Nodes (Junctions, Corners, Ends) ───────────────────────
-        val nodeMap = mapper.mapNodes(grid, placedPieces, config, enclosedWallCells)
+        val nodeMap = mapper.mapNodes(grid, placedPieces, config, floorConfig, enclosedWallCells)
 
         // ── 5. Map Wires (Dynamic Straight Fill) ──────────────────────────
         mapper.mapWires(grid, nodeMap, roomPieces, placedPieces, config, enclosedWallCells)
@@ -141,6 +147,109 @@ class DungeonGenerator(
             "${placedPieces.size - roomsPlaced} corridors/ends). " +
             "Sealed ${allUncapped.size} exits with stone."
         )
+        
+        spawnEntities()
+    }
+
+    private fun spawnEntities() {
+        // Spawn Normal Pokémon
+        for (pos in DungeonManager.pokemonSpawns) {
+            val spawnInfo = selectPokemon(floorConfig.pokemonSpawns) ?: continue
+            spawnPokemonEntity(pos, spawnInfo)
+        }
+        
+        // Spawn Normal Items
+        for (pos in DungeonManager.itemSpawns) {
+            val itemInfo = selectItem(floorConfig.itemSpawns) ?: continue
+            spawnItemEntity(pos, itemInfo)
+        }
+        
+        // Spawn Treasure (End Floor)
+        for (pos in DungeonManager.treasureSpawns) {
+            val itemInfo = selectItem(config.endFloorConfig.treasure) ?: continue
+            spawnItemEntity(pos, itemInfo)
+        }
+        
+        // Spawn Boss (End Floor)
+        for (pos in DungeonManager.bossSpawns) {
+            val spawnInfo = selectPokemon(config.endFloorConfig.boss) ?: continue
+            spawnPokemonEntity(pos, spawnInfo)
+        }
+        
+        // Spawn Minions (End Floor)
+        for (pos in DungeonManager.minionSpawns) {
+            val spawnInfo = selectPokemon(config.endFloorConfig.minion) ?: continue
+            spawnPokemonEntity(pos, spawnInfo)
+        }
+    }
+    
+    private fun selectPokemon(list: List<net.drachi.cdde.data.PokemonSpawnEntry>): net.drachi.cdde.data.PokemonSpawnEntry? {
+        if (list.isEmpty()) return null
+        val totalWeight = list.sumOf { it.weight }
+        if (totalWeight <= 0) return list.randomOrNull()
+        var r = level.random.nextInt(totalWeight)
+        for (entry in list) {
+            r -= entry.weight
+            if (r < 0) return entry
+        }
+        return list.last()
+    }
+    
+    private fun selectItem(list: List<net.drachi.cdde.data.ItemSpawnEntry>): net.drachi.cdde.data.ItemSpawnEntry? {
+        if (list.isEmpty()) return null
+        val totalWeight = list.sumOf { it.weight }
+        if (totalWeight <= 0) return list.randomOrNull()
+        var r = level.random.nextInt(totalWeight)
+        for (entry in list) {
+            r -= entry.weight
+            if (r < 0) return entry
+        }
+        return list.last()
+    }
+    
+    private fun spawnPokemonEntity(pos: BlockPos, entry: net.drachi.cdde.data.PokemonSpawnEntry) {
+        try {
+            val speciesName = entry.pokemon.split(":").lastOrNull() ?: entry.pokemon
+            val species = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.getByName(speciesName) ?: return
+            
+            val levelValue = if (entry.maxLevel > entry.minLevel) {
+                level.random.nextInt(entry.maxLevel - entry.minLevel + 1) + entry.minLevel
+            } else {
+                entry.minLevel
+            }
+            
+            val pokemon = species.create(levelValue)
+            val entity = com.cobblemon.mod.common.entity.pokemon.PokemonEntity(level, pokemon)
+            entity.setPos(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5)
+            entity.addTag("cdde_spawned")
+            level.addFreshEntity(entity)
+            
+            CobblemonDungeonDungeonsEngine.logger.info("Spawned ${pokemon.species.name} (Lvl $levelValue) at $pos")
+        } catch (e: Exception) {
+            CobblemonDungeonDungeonsEngine.logger.error("Failed to spawn pokemon: ${entry.pokemon}", e)
+        }
+    }
+    
+    private fun spawnItemEntity(pos: BlockPos, entry: net.drachi.cdde.data.ItemSpawnEntry) {
+        try {
+            val item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(entry.item))
+            if (item == net.minecraft.world.item.Items.AIR) return
+            
+            val amount = if (entry.maxAmount > entry.minAmount) {
+                level.random.nextInt(entry.maxAmount - entry.minAmount + 1) + entry.minAmount
+            } else {
+                entry.minAmount
+            }
+            
+            val itemStack = net.minecraft.world.item.ItemStack(item, amount)
+            val entity = net.minecraft.world.entity.item.ItemEntity(level, pos.x + 0.5, pos.y.toDouble() + 0.5, pos.z + 0.5, itemStack)
+            entity.addTag("cdde_spawned")
+            level.addFreshEntity(entity)
+            
+            CobblemonDungeonDungeonsEngine.logger.info("Spawned ${amount}x ${entry.item} at $pos")
+        } catch (e: Exception) {
+            CobblemonDungeonDungeonsEngine.logger.error("Failed to spawn item: ${entry.item}", e)
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -156,11 +265,11 @@ class DungeonGenerator(
      *
      * @return Number of rooms successfully placed.
      */
-    private fun scatterRooms(grid: DungeonGrid, roomIds: List<net.minecraft.resources.ResourceLocation>, mapper: TemplateMapper): Int {
+    private fun scatterRooms(grid: DungeonGrid, roomIds: List<net.minecraft.resources.ResourceLocation>, mapper: TemplateMapper, maxRooms: Int): Int {
         var roomsPlaced = 0
         var tries = 0
 
-        while (roomsPlaced < config.maxRoomsPerFloor && tries < 50) {
+        while (roomsPlaced < maxRooms && tries < 50) {
             tries++
             val roomId = roomIds[level.random.nextInt(roomIds.size)]
             val t = DungeonManager.loadedTemplates[roomId] ?: continue
@@ -274,7 +383,7 @@ class DungeonGenerator(
 
     /** Renders a single [StructurePiece] into the world with palette processing. */
     private fun renderPiece(piece: StructurePiece) {
-        val configuredHazard = if (config.hazards.isNotEmpty()) config.hazards[0] else "minecraft:water"
+        val configuredHazard = if (floorConfig.hazards.isNotEmpty()) floorConfig.hazards[0] else "minecraft:water"
         val hazardState = when {
             configuredHazard.contains("lava") -> ModBlocks.HAZARD_LAVA.defaultBlockState()
             configuredHazard.contains("void") -> ModBlocks.HAZARD_VOID.defaultBlockState()
@@ -289,10 +398,10 @@ class DungeonGenerator(
             .addProcessor(JigsawReplacementProcessor.INSTANCE)
             .addProcessor(
                 PaletteProcessor(
-                    paletteAMap = Blocks.STONE_BRICKS.defaultBlockState(),
-                    paletteBMap = Blocks.CRACKED_STONE_BRICKS.defaultBlockState(),
-                    paletteCMap = Blocks.MOSSY_STONE_BRICKS.defaultBlockState(),
-                    paletteDMap = Blocks.CHISELED_STONE_BRICKS.defaultBlockState(),
+                    paletteAMap = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(floorConfig.paletteA)).defaultBlockState(),
+                    paletteBMap = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(floorConfig.paletteB)).defaultBlockState(),
+                    paletteCMap = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(floorConfig.paletteC)).defaultBlockState(),
+                    paletteDMap = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(floorConfig.paletteD)).defaultBlockState(),
                     hazardMap = hazardState,
                     hazardPositions = hazardPositions
                 )
@@ -334,6 +443,13 @@ class DungeonGenerator(
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
             DungeonManager.minionSpawns.add(info.pos)
             CobblemonDungeonDungeonsEngine.logger.info("Registered Minion spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+        }
+        
+        val eSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.END_STAIR_SPAWN)
+        for (info in eSpawns) {
+            level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
+            DungeonManager.endStairSpawns.add(info.pos)
+            CobblemonDungeonDungeonsEngine.logger.info("Registered End Stair spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
         }
     }
 
@@ -406,6 +522,12 @@ class DungeonGenerator(
 
 
     private fun placeStairs(roomPieces: List<StructurePiece>, theme: String) {
+        if (DungeonManager.endStairSpawns.isNotEmpty()) {
+            this.stairPosition = DungeonManager.endStairSpawns.first()
+            CobblemonDungeonDungeonsEngine.logger.info("Using configured END_STAIR_SPAWN at ${this.stairPosition}")
+            return
+        }
+
         val shuffledRooms = roomPieces.shuffled(kotlin.random.Random(level.random.nextLong()))
         for (room in shuffledRooms) {
             val minJigY = room.parsedJigsaws.minOfOrNull { it.pos.y } ?: room.pos.y
@@ -642,7 +764,7 @@ class DungeonGenerator(
         
         if (hazardSeaCells.isEmpty()) return
         
-        val configuredHazard = if (config.hazards.isNotEmpty()) config.hazards[0] else "minecraft:water"
+        val configuredHazard = if (floorConfig.hazards.isNotEmpty()) floorConfig.hazards[0] else "minecraft:water"
         val hazardState = when {
             configuredHazard.contains("lava") -> ModBlocks.HAZARD_LAVA.defaultBlockState()
             configuredHazard.contains("void") -> ModBlocks.HAZARD_VOID.defaultBlockState()

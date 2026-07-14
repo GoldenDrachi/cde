@@ -28,7 +28,46 @@ object DungeonCommand {
         val leaveCmd = Commands.literal("leave")
             .executes { context -> executeLeave(context.source) }
 
-        root.then(generateCmd).then(leaveCmd)
+        val portalCmd = Commands.literal("portal")
+            .then(
+                Commands.argument("config_id", StringArgumentType.word())
+                    .suggests { _, builder -> net.minecraft.commands.SharedSuggestionProvider.suggest(DungeonManager.configs.keys, builder) }
+                    .executes { context -> executePortal(context.source, StringArgumentType.getString(context, "config_id")) }
+            )
+
+        val configCmd = Commands.literal("config")
+            .then(
+                Commands.literal("create")
+                    .then(
+                        Commands.argument("id", StringArgumentType.word())
+                            .executes { context -> executeConfigCreate(context.source, StringArgumentType.getString(context, "id")) }
+                    )
+            )
+            .then(
+                Commands.literal("edit")
+                    .then(
+                        Commands.argument("id", StringArgumentType.word())
+                            .suggests { _, builder -> net.minecraft.commands.SharedSuggestionProvider.suggest(DungeonManager.configs.keys, builder) }
+                            .executes { context -> executeConfigEdit(context.source, StringArgumentType.getString(context, "id")) }
+                    )
+            )
+            .then(
+                Commands.literal("export")
+                    .then(
+                        Commands.argument("id", StringArgumentType.word())
+                            .suggests { _, builder -> net.minecraft.commands.SharedSuggestionProvider.suggest(DungeonManager.configs.keys, builder) }
+                            .executes { context -> executeConfigExport(context.source, StringArgumentType.getString(context, "id")) }
+                    )
+            )
+            .then(
+                Commands.literal("import")
+                    .then(
+                        Commands.argument("id", StringArgumentType.word())
+                            .executes { context -> executeConfigImport(context.source, StringArgumentType.getString(context, "id")) }
+                    )
+            )
+
+        root.then(generateCmd).then(leaveCmd).then(portalCmd).then(configCmd)
         dispatcher.register(root)
     }
 
@@ -48,7 +87,9 @@ object DungeonCommand {
         var config = DungeonConfig("test_run")
         if (hazardArg != null) {
             val prefix = if (hazardArg.contains(":")) "" else "minecraft:"
-            config = config.copy(hazards = listOf(prefix + hazardArg))
+            val fc = config.getFloorConfig(1)
+            fc.hazards = mutableListOf(prefix + hazardArg)
+            config.floorRules = mutableListOf(net.drachi.cdde.data.FloorRule("*", fc))
         }
 
         val instance = DungeonManager.allocateInstance(config)
@@ -56,7 +97,7 @@ object DungeonCommand {
 
         try {
             // Generate Floor 1
-            val gen1 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ), config)
+            val gen1 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ), config, 1)
             gen1.generate()
             val startPosFloor1 = gen1.startPosition ?: net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
             instance.floorStartPositions[1] = startPosFloor1
@@ -65,7 +106,7 @@ object DungeonCommand {
             }
             
             // Generate Floor 2
-            val gen2 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX + 1000, 64, instance.originZ), config)
+            val gen2 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX + 1000, 64, instance.originZ), config, 2)
             gen2.generate()
             val startPosFloor2 = gen2.startPosition ?: net.minecraft.core.BlockPos(instance.originX + 1000, 65, instance.originZ)
             instance.floorStartPositions[2] = startPosFloor2
@@ -171,6 +212,78 @@ object DungeonCommand {
         net.drachi.cdde.database.DatabaseManager.removeDungeonPlayer(instance.instanceId, player.uuid)
         
         source.sendSuccess({ Component.translatable("message.cdde.left_dungeon") }, true)
+        return 1
+    }
+
+    private fun executePortal(source: CommandSourceStack, configId: String): Int {
+        val player = source.playerOrException
+        
+        if (!DungeonManager.configs.containsKey(configId)) {
+            source.sendFailure(Component.literal("Config ID '$configId' not found."))
+            return 0
+        }
+
+        // Give the player a portal block that is pre-configured
+        val itemStack = net.minecraft.world.item.ItemStack(net.drachi.cdde.registry.ModBlocks.DUNGEON_PORTAL)
+        
+        net.minecraft.world.item.component.CustomData.update(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA, itemStack) { tag ->
+            tag.putString("ConfigId", configId)
+            tag.putString("id", "cdde:dungeon_portal") // Ensure block entity ID is present
+        }
+        
+        itemStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Dungeon Portal ($configId)").withStyle(net.minecraft.ChatFormatting.AQUA))
+        
+        if (!player.inventory.add(itemStack)) {
+            player.drop(itemStack, false)
+        }
+        
+        source.sendSuccess({ Component.literal("Gave 1 Dungeon Portal for config '$configId'") }, true)
+        return 1
+    }
+
+    private fun executeConfigExport(source: CommandSourceStack, id: String): Int {
+        val success = net.drachi.cdde.data.ConfigManager.exportToJSON(id)
+        if (success) {
+            source.sendSuccess({ Component.literal("Successfully exported config '$id' to JSON.") }, true)
+            return 1
+        } else {
+            source.sendFailure(Component.literal("Failed to export: Config '$id' not found in current storage."))
+            return 0
+        }
+    }
+
+    private fun executeConfigImport(source: CommandSourceStack, id: String): Int {
+        val success = net.drachi.cdde.data.ConfigManager.importFromJSON(id)
+        if (success) {
+            source.sendSuccess({ Component.literal("Successfully imported config '$id' from JSON.") }, true)
+            return 1
+        } else {
+            source.sendFailure(Component.literal("Failed to import: Config '$id' not found in JSON storage."))
+            return 0
+        }
+    }
+
+    private fun executeConfigCreate(source: CommandSourceStack, id: String): Int {
+        val player = source.playerOrException
+        if (DungeonManager.configs.containsKey(id)) {
+            source.sendFailure(Component.literal("Config '$id' already exists. Use '/cdde config edit $id' instead."))
+            return 0
+        }
+        val config = DungeonConfig(id = id)
+        val jsonStr = kotlinx.serialization.json.Json { encodeDefaults = true }.encodeToString(DungeonConfig.serializer(), config)
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, net.drachi.cdde.network.OpenConfigScreenPacket(id, jsonStr))
+        return 1
+    }
+
+    private fun executeConfigEdit(source: CommandSourceStack, id: String): Int {
+        val player = source.playerOrException
+        val config = DungeonManager.configs[id]
+        if (config == null) {
+            source.sendFailure(Component.literal("Config '$id' not found."))
+            return 0
+        }
+        val jsonStr = kotlinx.serialization.json.Json { encodeDefaults = true }.encodeToString(DungeonConfig.serializer(), config)
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, net.drachi.cdde.network.OpenConfigScreenPacket(id, jsonStr))
         return 1
     }
 }

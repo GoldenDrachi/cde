@@ -29,5 +29,39 @@ class CDDEClient : ClientModInitializer {
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_WATER, RenderType.translucent())
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_LAVA, RenderType.translucent())
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_VOID, RenderType.translucent())
+        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.DUNGEON_PORTAL, RenderType.translucent())
+
+        net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry.BLOCK.register({ state, world, pos, tintIndex ->
+            if (world != null && pos != null && tintIndex == 0) {
+                val be = world.getBlockEntity(pos) as? net.drachi.cdde.blocks.DungeonPortalBlockEntity
+                if (be != null) {
+                    val config = net.drachi.cdde.data.DungeonManager.configs[be.configId]
+                    if (config != null) return@register config.portalColor
+                    return@register be.colorHex
+                }
+            }
+            0x800080 // Default purple fallback
+        }, ModBlocks.DUNGEON_PORTAL)
+
+        net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry.ITEM.register({ stack, tintIndex ->
+            if (tintIndex == 0) {
+                val data = stack.getOrDefault(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA, net.minecraft.world.item.component.CustomData.EMPTY)
+                if (!data.isEmpty) {
+                    val tag = data.copyTag()
+                    if (tag.contains("ColorHex")) {
+                        return@register tag.getInt("ColorHex")
+                    }
+                }
+            }
+            0x800080 // Default purple
+        }, ModBlocks.DUNGEON_PORTAL)
+
+        ClientPlayNetworking.registerGlobalReceiver(net.drachi.cdde.network.OpenConfigScreenPacket.ID) { payload, context ->
+            val client = context.client()
+            client.execute {
+                val parsedConfig = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<net.drachi.cdde.data.DungeonConfig>(payload.configJson)
+                client.setScreen(net.drachi.cdde.client.ConfigEditorScreen(parsedConfig))
+            }
+        }
     }
 }

@@ -13,6 +13,7 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
         logger.info("Initializing Cobblemon Dungeon Dungeons Engine!")
         
         net.drachi.cdde.registry.ModBlocks.register()
+        net.drachi.cdde.registry.ModBlockEntities.register()
         net.drachi.cdde.registry.ModItems.register()
         net.drachi.cdde.registry.ModItemGroups.register()
         net.drachi.cdde.data.DungeonManager.init()

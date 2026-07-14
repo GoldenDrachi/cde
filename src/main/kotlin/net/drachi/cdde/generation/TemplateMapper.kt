@@ -129,6 +129,7 @@ class TemplateMapper(
         grid: DungeonGrid,
         placedPieces: MutableList<StructurePiece>,
         config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ): MutableMap<Long, StructurePiece> {
         val nodeMap = mutableMapOf<Long, StructurePiece>()

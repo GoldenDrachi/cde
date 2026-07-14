@@ -45,6 +45,7 @@ object DungeonManager {
     val treasureSpawns = mutableListOf<net.minecraft.core.BlockPos>()
     val bossSpawns = mutableListOf<net.minecraft.core.BlockPos>()
     val minionSpawns = mutableListOf<net.minecraft.core.BlockPos>()
+    val endStairSpawns = mutableListOf<net.minecraft.core.BlockPos>()
     
     fun getActiveDungeon(player: net.minecraft.world.entity.player.Player): ActiveDungeon? {
         val level = player.level()
@@ -66,6 +67,7 @@ object DungeonManager {
         treasureSpawns.clear()
         bossSpawns.clear()
         minionSpawns.clear()
+        endStairSpawns.clear()
     }
     
     val configs = mutableMapOf<String, DungeonConfig>()
@@ -93,41 +95,15 @@ object DungeonManager {
     }
 
     fun init() {
-        loadConfigs()
-        net.drachi.cdde.database.DatabaseManager.initialize()
+        ConfigManager.init()
+        ConfigManager.loadDungeonConfigs()
+        
         val config = configs["default"] ?: configs.values.firstOrNull()
         if (config != null) {
-            val loaded = net.drachi.cdde.database.DatabaseManager.loadActiveDungeons(config.serverId)
+            val loaded = net.drachi.cdde.database.DatabaseManager.loadActiveDungeons(ConfigManager.globalConfig.serverId)
             activeDungeons.putAll(loaded)
         }
         scanNbtStructures()
-    }
-
-    private fun loadConfigs() {
-        configs.clear()
-        val configDir = FabricLoader.getInstance().configDir.resolve("cdde").toFile()
-        if (!configDir.exists()) {
-            configDir.mkdirs()
-        }
-
-        // Generate default config if no configs exist
-        val defaultFile = File(configDir, "config.json")
-        if (!defaultFile.exists()) {
-            val defaultCfg = DungeonConfig(id = "default")
-            defaultFile.writeText(json.encodeToString(DungeonConfig.serializer(), defaultCfg))
-        }
-
-        configDir.listFiles { file -> file.extension == "json" }?.forEach { file ->
-            try {
-                val content = file.readText()
-                val config = json.decodeFromString<DungeonConfig>(content)
-                configs[config.id] = config
-                file.writeText(json.encodeToString(DungeonConfig.serializer(), config))
-                CobblemonDungeonDungeonsEngine.logger.info("Loaded dungeon config: ${config.id}")
-            } catch (e: Exception) {
-                CobblemonDungeonDungeonsEngine.logger.error("Failed to load config file: ${file.name}", e)
-            }
-        }
     }
 
     private fun scanNbtStructures() {
@@ -225,14 +201,13 @@ object DungeonManager {
             currentFloor = 1
         )
         activeDungeons[id] = instance
-        net.drachi.cdde.database.DatabaseManager.saveActiveDungeon(instance, config.serverId)
+        net.drachi.cdde.database.DatabaseManager.saveActiveDungeon(instance, ConfigManager.globalConfig.serverId)
         return instance
     }
 
     fun tickDungeonLifecycle(server: net.minecraft.server.MinecraftServer) {
         val now = System.currentTimeMillis()
-        val config = configs["default"] ?: configs.values.firstOrNull() ?: return
-        val timeoutMs = config.abandonTimeoutMinutes * 60L * 1000L
+        val timeoutMs = ConfigManager.globalConfig.abandonTimeoutMinutes * 60L * 1000L
         
         val toRemove = mutableListOf<UUID>()
         for ((id, dungeon) in activeDungeons) {
@@ -247,7 +222,7 @@ object DungeonManager {
             if (hasOnlinePlayers) {
                 dungeon.lastActiveTime = now
                 if (server.tickCount % 200 == 0) { // save every 10 seconds
-                    net.drachi.cdde.database.DatabaseManager.saveActiveDungeon(dungeon, config.serverId)
+                    net.drachi.cdde.database.DatabaseManager.saveActiveDungeon(dungeon, ConfigManager.globalConfig.serverId)
                 }
             } else {
                 if (now - dungeon.lastActiveTime > timeoutMs) {
@@ -272,19 +247,19 @@ object DungeonManager {
                     val floorOriginZ = dungeon.originZ
                     val floorOriginX = dungeon.originX + ((f - 1) * 1000)
                     
-                    val dim = DungeonGrid.gridSizeForRooms(dungeon.config.maxRoomsPerFloor)
+                    val dim = DungeonGrid.gridSizeForRooms(dungeon.config.getFloorConfig(f).maxRooms)
                     val maxBlocks = dim * DungeonGrid.CELL_SIZE
                     val bounds = net.minecraft.world.phys.AABB(
                         floorOriginX.toDouble() - 50.0, -64.0, floorOriginZ.toDouble() - 50.0,
                         floorOriginX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, floorOriginZ.toDouble() + maxBlocks.toDouble() + 50.0
                     )
-                    clearRegion(dungeonLevel, bounds, dungeon.config)
+                    clearRegion(dungeonLevel, bounds, dungeon.config, dungeon.config.getFloorConfig(f))
                 }
             }
         }
     }
 
-    fun clearRegion(level: ServerLevel, bounds: AABB, config: DungeonConfig?) {
+    fun clearRegion(level: ServerLevel, bounds: AABB, config: DungeonConfig?, floorConfig: FloorConfig? = null) {
         val minX = bounds.minX.toInt()
         val maxX = bounds.maxX.toInt()
         val minZ = bounds.minZ.toInt()
@@ -356,17 +331,18 @@ object DungeonManager {
         instance.currentFloor++
         CobblemonDungeonDungeonsEngine.logger.info("Player ${player.name.string} descending to floor ${instance.currentFloor} of dungeon ${instance.instanceId}")
 
-        // Generate Floor + 1
+        // Generate Floor Next
         val generatorNext = net.drachi.cdde.generation.DungeonGenerator(
             level,
-            net.minecraft.core.BlockPos(instance.originX + (instance.currentFloor * 1000), 64, instance.originZ),
-            instance.config
+            net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 64, instance.originZ),
+            instance.config,
+            instance.currentFloor
         )
         generatorNext.generate()
-        val startPosFloorNext = generatorNext.startPosition ?: net.minecraft.core.BlockPos(instance.originX + (instance.currentFloor * 1000), 65, instance.originZ)
-        instance.floorStartPositions[instance.currentFloor + 1] = startPosFloorNext
+        val startPosFloorNext = generatorNext.startPosition ?: net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 65, instance.originZ)
+        instance.floorStartPositions[instance.currentFloor] = startPosFloorNext
         if (generatorNext.stairPosition != null) {
-            instance.stairPositions[instance.currentFloor + 1] = generatorNext.stairPosition!!
+            instance.stairPositions[instance.currentFloor] = generatorNext.stairPosition!!
         }
 
         // Find all party members (fallback to just the player if not in a party)
@@ -433,13 +409,13 @@ object DungeonManager {
         val floorOriginZ = instance.originZ
         val floorOriginX = instance.originX + ((oldFloor - 1) * 1000)
         
-        val gridDim = net.drachi.cdde.generation.DungeonGrid.gridSizeForRooms(instance.config.maxRoomsPerFloor)
+        val gridDim = net.drachi.cdde.generation.DungeonGrid.gridSizeForRooms(instance.config.getFloorConfig(oldFloor).maxRooms)
         val maxBlocks = gridDim * net.drachi.cdde.generation.DungeonGrid.CELL_SIZE
         val bounds = net.minecraft.world.phys.AABB(
             floorOriginX.toDouble() - 50.0, -64.0, floorOriginZ.toDouble() - 50.0,
             floorOriginX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, floorOriginZ.toDouble() + maxBlocks.toDouble() + 50.0
         )
-        clearRegion(level, bounds, instance.config)
+        clearRegion(level, bounds, instance.config, instance.config.getFloorConfig(oldFloor))
     }
 
     fun findSafeSpawn(level: ServerLevel, centerPos: net.minecraft.core.BlockPos): net.minecraft.core.BlockPos {
