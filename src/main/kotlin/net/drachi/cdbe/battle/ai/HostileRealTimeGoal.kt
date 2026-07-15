@@ -24,6 +24,14 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
     }
 
     override fun canUse(): Boolean {
+        // CDDE Freeze Check
+        if (pokemonEntity.hasEffect(net.minecraft.world.effect.MobEffects.DIG_SLOWDOWN)) {
+            val effect = pokemonEntity.getEffect(net.minecraft.world.effect.MobEffects.DIG_SLOWDOWN)
+            if (effect != null && effect.amplifier >= 200) {
+                return false
+            }
+        }
+
         if (target != null && target!!.isAlive) return true
         
         target = pokemonEntity.target ?: pokemonEntity.brain.getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET).orElse(null)
@@ -131,6 +139,14 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
     }
 
     override fun tick() {
+        // CDDE Freeze Check
+        if (pokemonEntity.hasEffect(net.minecraft.world.effect.MobEffects.DIG_SLOWDOWN)) {
+            val effect = pokemonEntity.getEffect(net.minecraft.world.effect.MobEffects.DIG_SLOWDOWN)
+            if (effect != null && effect.amplifier >= 200) {
+                return
+            }
+        }
+
         val currentTarget = target ?: return
         if (!currentTarget.isAlive) {
             target = null

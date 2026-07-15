@@ -33,6 +33,14 @@ object AttackExecutor {
             (player as? net.minecraft.server.level.ServerPlayer)?.displayClientMessage(Component.translatable("cdbe.message.stunned").withStyle(net.minecraft.ChatFormatting.RED), true)
             return
         }
+
+        // CDDE Freeze Check
+        if (player.hasEffect(net.minecraft.world.effect.MobEffects.DIG_SLOWDOWN)) {
+            val effect = player.getEffect(net.minecraft.world.effect.MobEffects.DIG_SLOWDOWN)
+            if (effect != null && effect.amplifier >= 200) {
+                return
+            }
+        }
         
         // 2. Find the selected Pokemon in the player's party
         val party = Cobblemon.storage.getParty(player)
