@@ -639,10 +639,14 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                     val block = BuiltInRegistries.BLOCK.get(id)
                     val isStair = block is net.minecraft.world.level.block.StairBlock
                     val isAir = block === net.minecraft.world.level.block.Blocks.AIR
-                    if (isAir) false
+                    if (id.namespace == "cdde") false
+                    else if (isAir) false
                     else if (requireStairs) isStair
                     else if (!allowStairs && isStair) false
-                    else true
+                    else {
+                        val state = block.defaultBlockState()
+                        net.minecraft.world.level.block.Block.isShapeFullBlock(state.getShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, net.minecraft.core.BlockPos.ZERO))
+                    }
                 }.map { ResourceSelectorScreen.ResourceEntry(it.toString(), ItemStack(BuiltInRegistries.BLOCK.get(it).asItem())) }
             }
             openResourceSelector(Component.translatable("gui.cdde.config.select_block_for", Component.translatable(translatableKey).string), validBlocks, onSelect)
