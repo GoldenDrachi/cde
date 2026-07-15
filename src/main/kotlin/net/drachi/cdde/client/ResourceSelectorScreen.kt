@@ -41,7 +41,7 @@ class ResourceSelectorScreen(
         contentContainer = Containers.verticalFlow(Sizing.content(), Sizing.content())
         contentContainer.horizontalAlignment(HorizontalAlignment.LEFT)
 
-        val scroll = Containers.verticalScroll(Sizing.fixed(320), Sizing.fixed(220), contentContainer)
+        val scroll = Containers.verticalScroll(Sizing.fixed(360), Sizing.fixed(220), contentContainer)
         scroll.surface(Surface.DARK_PANEL)
         scroll.padding(Insets.of(5))
         scroll.margins(Insets.bottom(10))
@@ -63,7 +63,11 @@ class ResourceSelectorScreen(
         
         val filtered = entries.filter { it.id.lowercase().contains(searchQuery) }
         
-        val itemsPerRow = 10
+        if (filtered.isEmpty()) return
+        
+        val isIconMode = filtered.first().icon != null && !filtered.first().icon!!.isEmpty
+        val itemsPerRow = if (isIconMode) 12 else 1
+        
         val rows = filtered.chunked(itemsPerRow)
 
         for (rowItems in rows) {
@@ -78,12 +82,13 @@ class ResourceSelectorScreen(
                     itemComp.tooltip(Component.literal(entry.id))
                     itemComp
                 } else {
-                    val label = Components.label(Component.literal(entry.id.split(":").lastOrNull()?.take(8) ?: entry.id.take(8)))
-                    val wrapper = Containers.horizontalFlow(Sizing.fixed(30), Sizing.fixed(24))
+                    val label = Components.label(Component.literal(entry.id.split(":").lastOrNull() ?: entry.id))
+                    val wrapper = Containers.horizontalFlow(Sizing.content(), Sizing.fixed(24))
                     wrapper.horizontalAlignment(HorizontalAlignment.CENTER)
                     wrapper.verticalAlignment(VerticalAlignment.CENTER)
                     wrapper.surface(Surface.flat(0x77000000.toInt()))
                     wrapper.tooltip(Component.literal(entry.id))
+                    wrapper.padding(Insets.of(0, 0, 5, 5))
                     wrapper.child(label)
                     wrapper.margins(Insets.of(2))
                     wrapper

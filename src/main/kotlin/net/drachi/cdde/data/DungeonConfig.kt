@@ -36,7 +36,11 @@ data class FloorConfig(
     var paletteC: String = "minecraft:mossy_stone_bricks",
     var paletteD: String = "minecraft:chiseled_stone_bricks",
     var hazards: MutableList<String> = mutableListOf(),      
-    var activeSets: MutableList<String> = mutableListOf(),   
+    var activeSets: MutableList<String> = mutableListOf(),
+    var biome: String = "minecraft:the_void",
+    var stairBaseBlock: String = "minecraft:stone_bricks",
+    var stairStepBlock: String = "minecraft:stone_brick_stairs",
+    var generateHazardSeas: Boolean = false
 )
 
 @Serializable
@@ -64,11 +68,7 @@ data class DungeonConfig(
     var endFloorConfig: EndFloorConfig = EndFloorConfig(),
     
     // Global properties
-    var stairDirection: StairDirection = StairDirection.DOWN,
-    var stairBaseBlock: String = "minecraft:stone_bricks",
-    var stairStepBlock: String = "minecraft:stone_brick_stairs",
-    var generateHazardSeas: Boolean = false,
-    var biome: String = "minecraft:the_void",
+    var stairDirection: StairDirection = StairDirection.DOWN
 ) {
     fun getFloorConfig(floor: Int): FloorConfig {
         // Iterate backwards so that later rules override earlier ones

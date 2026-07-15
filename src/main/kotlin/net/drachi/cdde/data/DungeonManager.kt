@@ -321,20 +321,19 @@ object DungeonManager {
                     val section = sections[i]
                     if (section == null) continue
 
-                    if (!section.hasOnlyAir()) {
-                        val registry = level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME)
-                        
-                        // Parse configurable biome or fallback to plains
-                        val biomeId = ResourceLocation.parse(config?.biome ?: "minecraft:plains")
-                        val biomeKey = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BIOME, biomeId)
-                        val targetBiome = registry.getHolder(biomeKey).orElse(registry.getHolderOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS))
-                        
-                        sections[i] = LevelChunkSection(
-                            PalettedContainer(Block.BLOCK_STATE_REGISTRY, airState, PalettedContainer.Strategy.SECTION_STATES),
-                            PalettedContainer(registry.asHolderIdMap(), targetBiome, PalettedContainer.Strategy.SECTION_BIOMES)
-                        )
-                        section.recalcBlockCounts()
-                    }
+                    val registry = level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME)
+                    
+                    // Parse configurable biome or fallback to plains
+                    val biomeId = ResourceLocation.parse(floorConfig?.biome ?: "minecraft:plains")
+                    val biomeKey = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BIOME, biomeId)
+                    val targetBiome = registry.getHolder(biomeKey).orElse(registry.getHolderOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS))
+                    
+                    val newSection = LevelChunkSection(
+                        PalettedContainer(Block.BLOCK_STATE_REGISTRY, airState, PalettedContainer.Strategy.SECTION_STATES),
+                        PalettedContainer(registry.asHolderIdMap(), targetBiome, PalettedContainer.Strategy.SECTION_BIOMES)
+                    )
+                    newSection.recalcBlockCounts()
+                    sections[i] = newSection
                 }
                 chunk.initializeLightSources()
                 level.chunkSource.lightEngine.lightChunk(chunk, false)

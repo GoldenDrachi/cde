@@ -115,19 +115,17 @@ class DungeonGenerator(
         CobblemonDungeonDungeonsEngine.logger.info("Grid state after maze generation:\n${grid.toAscii()}")
 
         // ── 4. Map Nodes (Junctions, Corners, Ends) ───────────────────────
-        val nodeMap = mapper.mapNodes(grid, placedPieces, config, floorConfig, enclosedWallCells)
+        val nodeMap = mapper.mapNodes(grid, placedPieces, floorConfig, enclosedWallCells)
 
         // ── 5. Map Wires (Dynamic Straight Fill) ──────────────────────────
-        mapper.mapWires(grid, nodeMap, roomPieces, placedPieces, config, enclosedWallCells)
-
-        // ── 5a. Optimize Junctions (reduce exits of under-connected nodes) ─
-        mapper.optimizeJunctionExits(nodeMap, placedPieces, config, enclosedWallCells)
+        mapper.mapWires(grid, nodeMap, roomPieces, placedPieces, floorConfig, enclosedWallCells)
+        mapper.optimizeJunctionExits(nodeMap, placedPieces, floorConfig, enclosedWallCells)
 
         // ── 5b. Cap Unconnected Node Exits (Mystery Dungeon dead-end caps) ─
-        val uncappedNodeExits = mapper.capUnconnectedNodeExits(grid, nodeMap, placedPieces, config, enclosedWallCells)
+        val uncappedNodeExits = mapper.capUnconnectedNodeExits(grid, nodeMap, placedPieces, floorConfig, enclosedWallCells)
 
         // ── 6. Cap Unconnected Room Exits ─────────────────────────────────
-        val uncappedRoomExits = mapper.capUnconnectedRoomExits(grid, roomPieces, placedPieces, nodeMap, config, enclosedWallCells)
+        val uncappedRoomExits = mapper.capUnconnectedRoomExits(grid, roomPieces, placedPieces, nodeMap, floorConfig, enclosedWallCells)
 
         // ── 7. Render All Pieces to World ─────────────────────────────────
         for (piece in placedPieces) {
@@ -443,7 +441,7 @@ class DungeonGenerator(
                 if (!exitsValid) continue
 
                 // If generateHazardSeas is enabled, check spill safety
-                if (config.generateHazardSeas) {
+                if (floorConfig.generateHazardSeas) {
                     val relativeFloorY = (localJigsaws.minOfOrNull { it.pos.y } ?: 1) - 1
                     val openDirs = mapper.detectOpenDirections(t, rot, relativeFloorY)
                     if (openDirs.isNotEmpty()) {
@@ -719,8 +717,8 @@ class DungeonGenerator(
                     // Track position for step-on detection: center of the 3x3 template
                     this.stairPosition = spot.offset(1, 0, 1)
                 } else {
-                    val baseState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.stairBaseBlock)).defaultBlockState()
-                    val stepBlock = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.stairStepBlock))
+                    val baseState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(floorConfig.stairBaseBlock)).defaultBlockState()
+                    val stepBlock = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(floorConfig.stairStepBlock))
                     val stairBlock = stepBlock as? net.minecraft.world.level.block.StairBlock
                     
                     val validDirs = DungeonGrid.CARDINALS.filter { dir ->
@@ -876,7 +874,7 @@ class DungeonGenerator(
     }
 
     private fun renderHazardSeas(grid: DungeonGrid, mapper: TemplateMapper) {
-        if (!config.generateHazardSeas) return
+        if (!floorConfig.generateHazardSeas) return
         val hazardSeaCells = mutableSetOf<Pair<Int, Int>>()
         val queue = java.util.ArrayDeque<Pair<Int, Int>>()
         
@@ -925,7 +923,7 @@ class DungeonGenerator(
             configuredHazard.contains("void") -> ModBlocks.HAZARD_VOID.defaultBlockState()
             else -> ModBlocks.HAZARD_WATER.defaultBlockState()
         }
-        val floorState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.stairBaseBlock)).defaultBlockState()
+        val floorState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(floorConfig.stairBaseBlock)).defaultBlockState()
         val lightState = Blocks.LIGHT.defaultBlockState().setValue(net.minecraft.world.level.block.LightBlock.LEVEL, 15)
         
         for ((cx, cz) in hazardSeaCells) {

@@ -128,7 +128,6 @@ class TemplateMapper(
     fun mapNodes(
         grid: DungeonGrid,
         placedPieces: MutableList<StructurePiece>,
-        config: DungeonConfig,
         floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ): MutableMap<Long, StructurePiece> {
@@ -226,7 +225,7 @@ class TemplateMapper(
                         if (rot != null) {
                             val relativeFloorY = (candidate.jigsaws.minOfOrNull { it.pos.y } ?: 1) - 1
                             val openDirsOnTemplate = detectOpenDirections(candidate.template, rot, relativeFloorY)
-                            if (!isPlacementSpillSafe(x, z, 1, 1, openDirsOnTemplate, config.generateHazardSeas, enclosedWallCells)) {
+                            if (!isPlacementSpillSafe(x, z, 1, 1, openDirsOnTemplate, floorConfig.generateHazardSeas, enclosedWallCells)) {
                                 continue
                             }
                             pt = candidate
@@ -280,7 +279,7 @@ class TemplateMapper(
         nodeMap: Map<Long, StructurePiece>,
         roomPieces: List<StructurePiece>,
         placedPieces: MutableList<StructurePiece>,
-        config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ) {
         if (straights.isEmpty()) return
@@ -372,7 +371,7 @@ class TemplateMapper(
                         continue
                     }
 
-                    val segments = fillGapJigsawToJigsaw(startJig, endJig, roomPieces, placedPieces, grid, config, enclosedWallCells)
+                    val segments = fillGapJigsawToJigsaw(startJig, endJig, roomPieces, placedPieces, grid, floorConfig, enclosedWallCells)
                     if (segments >= 0) {
                         segmentsPlaced += segments
                         connectedJigsaws.add(startJig.pos)
@@ -392,7 +391,7 @@ class TemplateMapper(
         roomPieces: List<StructurePiece>,
         placedPieces: MutableList<StructurePiece>,
         grid: DungeonGrid,
-        config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ): Int {
         var currentJig = start
@@ -425,7 +424,7 @@ class TemplateMapper(
             val sortedStraights = shuffledStraights.sortedBy { if (it.hasHazard == currentHasHazard) 0 else 1 }
             
             for (pt in sortedStraights) {
-                if (!config.generateHazardSeas && pt.res.path.lowercase().contains("open")) {
+                if (!floorConfig.generateHazardSeas && pt.res.path.lowercase().contains("open")) {
                     continue
                 }
                 
@@ -465,7 +464,7 @@ class TemplateMapper(
                 val openDirs = detectOpenDirections(pt.template, bestRot, relativeFloorY)
                 val cx = Math.floorDiv(targetPos.x - this.origin.x, DungeonGrid.CELL_SIZE)
                 val cz = Math.floorDiv(targetPos.z - this.origin.z, DungeonGrid.CELL_SIZE)
-                if (!isPlacementSpillSafe(cx, cz, 1, 1, openDirs, config.generateHazardSeas, enclosedWallCells)) {
+                if (!isPlacementSpillSafe(cx, cz, 1, 1, openDirs, floorConfig.generateHazardSeas, enclosedWallCells)) {
                     continue // Try another straight template in the pool
                 }
                 
@@ -528,7 +527,7 @@ class TemplateMapper(
         jig: ParsedJigsaw,
         placedPieces: MutableList<StructurePiece>,
         grid: DungeonGrid,
-        config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ): Boolean {
         if (ends.isEmpty()) return false
@@ -573,7 +572,7 @@ class TemplateMapper(
         val cz = Math.floorDiv(jig.pos.z - this.origin.z, DungeonGrid.CELL_SIZE) + jig.facing.stepZ
         val relativeFloorY = (endPt.jigsaws.minOfOrNull { it.pos.y } ?: 1) - 1
         val openDirs = detectOpenDirections(endPt.template, bestRot, relativeFloorY)
-        if (!isPlacementSpillSafe(cx, cz, 1, 1, openDirs, config.generateHazardSeas, enclosedWallCells)) {
+        if (!isPlacementSpillSafe(cx, cz, 1, 1, openDirs, floorConfig.generateHazardSeas, enclosedWallCells)) {
             return false
         }
         
@@ -586,7 +585,7 @@ class TemplateMapper(
         roomPieces: List<StructurePiece>,
         placedPieces: MutableList<StructurePiece>,
         nodeMap: MutableMap<Long, StructurePiece>,
-        config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ): List<ParsedJigsaw> {
         val uncapped = mutableListOf<ParsedJigsaw>()
@@ -595,9 +594,9 @@ class TemplateMapper(
             for (jig in room.parsedJigsaws) {
                 if (connectedJigsaws.contains(jig.pos)) continue
 
-                if (tryConnectToAdjacentPiece(jig, nodeMap, placedPieces, enclosedWallCells, config, grid)) {
+                if (tryConnectToAdjacentPiece(jig, nodeMap, placedPieces, enclosedWallCells, floorConfig, grid)) {
                     // Connected to adjacent piece
-                } else if (!tryPlaceEndPiece(jig, placedPieces, grid, config, enclosedWallCells)) {
+                } else if (!tryPlaceEndPiece(jig, placedPieces, grid, floorConfig, enclosedWallCells)) {
                     uncapped.add(jig)
                 }
             }
@@ -613,7 +612,7 @@ class TemplateMapper(
         grid: DungeonGrid,
         nodeMap: MutableMap<Long, StructurePiece>,
         placedPieces: MutableList<StructurePiece>,
-        config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ): List<ParsedJigsaw> {
         val uncapped = mutableListOf<ParsedJigsaw>()
@@ -623,9 +622,9 @@ class TemplateMapper(
             for (jig in piece.parsedJigsaws) {
                 if (connectedJigsaws.contains(jig.pos)) continue
 
-                if (tryConnectToAdjacentPiece(jig, nodeMap, placedPieces, enclosedWallCells, config, grid)) {
+                if (tryConnectToAdjacentPiece(jig, nodeMap, placedPieces, enclosedWallCells, floorConfig, grid)) {
                     // Connected to adjacent piece
-                } else if (tryPlaceEndPiece(jig, placedPieces, grid, config, enclosedWallCells)) {
+                } else if (tryPlaceEndPiece(jig, placedPieces, grid, floorConfig, enclosedWallCells)) {
                     capped++
                 } else {
                     uncapped.add(jig)
@@ -644,7 +643,7 @@ class TemplateMapper(
         nodeMap: MutableMap<Long, StructurePiece>,
         placedPieces: MutableList<StructurePiece>,
         enclosedWallCells: Set<Pair<Int, Int>>,
-        config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         grid: DungeonGrid
     ): Boolean {
         val sx = Math.floorDiv(jig.pos.x - origin.x, DungeonGrid.CELL_SIZE)
@@ -714,7 +713,7 @@ class TemplateMapper(
                 // Spill safety check
                 val relativeFloorY = (candidate.jigsaws.minOfOrNull { it.pos.y } ?: 1) - 1
                 val openDirs = detectOpenDirections(candidate.template, rot, relativeFloorY)
-                if (!isPlacementSpillSafe(cx, cz, 1, 1, openDirs, config.generateHazardSeas, enclosedWallCells)) {
+                if (!isPlacementSpillSafe(cx, cz, 1, 1, openDirs, floorConfig.generateHazardSeas, enclosedWallCells)) {
                     continue
                 }
                 
@@ -1070,7 +1069,7 @@ class TemplateMapper(
     fun optimizeJunctionExits(
         nodeMap: MutableMap<Long, StructurePiece>,
         placedPieces: MutableList<StructurePiece>,
-        config: DungeonConfig,
+        floorConfig: net.drachi.cdde.data.FloorConfig,
         enclosedWallCells: Set<Pair<Int, Int>>
     ) {
         val keys = nodeMap.keys.toList()
@@ -1106,7 +1105,7 @@ class TemplateMapper(
                             val x = (key shr 32).toInt()
                             val z = key.toInt()
                             
-                            if (!isPlacementSpillSafe(x, z, 1, 1, openDirs, config.generateHazardSeas, enclosedWallCells)) {
+                            if (!isPlacementSpillSafe(x, z, 1, 1, openDirs, floorConfig.generateHazardSeas, enclosedWallCells)) {
                                 continue
                             }
                             

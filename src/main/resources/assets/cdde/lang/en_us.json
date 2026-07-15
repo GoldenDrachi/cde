@@ -60,6 +60,7 @@
   "gui.cdde.result.title": "The Last Outing",
   "gui.cdde.result.place": "Place: %s",
   "gui.cdde.result.close": "Close",
+  "gui.cdde.config.select_biome": "Select Biome for Texture colors",
   "command.cdde.help.title": "--- CDDE Commands ---",
   "command.cdde.help.help": "/cdde help - Show this help menu",
   "command.cdde.help.portal": "/cdde portal <config_id> - Give yourself a portal for a dungeon",

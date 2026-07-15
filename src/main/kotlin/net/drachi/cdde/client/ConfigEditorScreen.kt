@@ -58,14 +58,9 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
 
         val globalRow1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
         globalRow1.child(createLabelInput("gui.cdde.config.amount_of_floors", config.amountOfFloors.toString()) { config.amountOfFloors = it.toIntOrNull() ?: 5 }.margins(Insets.right(10)))
-        globalRow1.child(createLabelInput("gui.cdde.config.biome", config.biome) { config.biome = it })
         contentFlow.child(globalRow1.margins(Insets.bottom(5)))
 
         val globalRow2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        val genHazardsBox = Components.checkbox(Component.translatable("gui.cdde.config.generate_hazard_seas")).checked(config.generateHazardSeas)
-        genHazardsBox.onChanged { checked -> config.generateHazardSeas = checked }
-        globalRow2.child(genHazardsBox.margins(Insets.right(20)))
-
         val endFloorBtn = Components.button(Component.literal("End Floor: " + config.endFloorType.name)) { btn ->
             val next = when (config.endFloorType) {
                 net.drachi.cdde.data.EndFloorType.NORMAL -> net.drachi.cdde.data.EndFloorType.TREASURE
@@ -84,8 +79,6 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
             rebuildContent()
         }
         stairRow.child(stairDirBtn.margins(Insets.right(10)))
-        stairRow.child(createBlockPicker("Base Stair Block", config.stairBaseBlock, allowStairs = false) { config.stairBaseBlock = it; rebuildContent() }.margins(Insets.right(10)))
-        stairRow.child(createBlockPicker("Stair Step Block", config.stairStepBlock, allowStairs = true, requireStairs = true) { config.stairStepBlock = it; rebuildContent() })
         contentFlow.child(stairRow.margins(Insets.bottom(10)))
 
         // Color Picker for Portal
@@ -128,8 +121,10 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
             
             for (i in config.endFloorConfig.treasure.indices) {
                 val spawn = config.endFloorConfig.treasure[i]
-                val row = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
-                row.margins(Insets.bottom(2))
+                val row = Containers.verticalFlow(Sizing.fill(100), Sizing.content())
+                row.margins(Insets.bottom(5))
+                row.padding(Insets.of(2))
+                row.surface(Surface.flat(0x33000000.toInt()))
                 
                 val itemBtn = Components.button(Component.literal(spawn.item.split(":").lastOrNull()?.take(12) ?: spawn.item.take(12))) {
                     val allItems = net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().toList().sortedBy { it.toString() }.map { net.drachi.cdde.client.ResourceSelectorScreen.ResourceEntry(it.toString(), net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(it))) }
@@ -139,15 +134,15 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                     }
                 }
                 
-                val weightBox = Components.textBox(Sizing.fixed(40))
+                val weightBox = Components.textBox(Sizing.fixed(60))
                 weightBox.text(spawn.weight.toString())
                 weightBox.onChanged().subscribe { t -> spawn.weight = t.toIntOrNull() ?: 10 }
 
-                val minBox = Components.textBox(Sizing.fixed(30))
+                val minBox = Components.textBox(Sizing.fixed(60))
                 minBox.text(spawn.minAmount.toString())
                 minBox.onChanged().subscribe { t -> spawn.minAmount = t.toIntOrNull() ?: 1 }
 
-                val maxBox = Components.textBox(Sizing.fixed(30))
+                val maxBox = Components.textBox(Sizing.fixed(60))
                 maxBox.text(spawn.maxAmount.toString())
                 maxBox.onChanged().subscribe { t -> spawn.maxAmount = t.toIntOrNull() ?: 1 }
 
@@ -156,14 +151,19 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                     rebuildContent()
                 }
 
-                row.child(itemBtn.margins(Insets.right(5)))
-                row.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
-                row.child(weightBox.margins(Insets.right(5)))
-                row.child(Components.label(Component.translatable("gui.cdde.config.amount")).margins(Insets.right(2)))
-                row.child(minBox.margins(Insets.right(2)))
-                row.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
-                row.child(maxBox.margins(Insets.right(5)))
-                row.child(delBtn)
+                val row1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+                row1.child(itemBtn.margins(Insets.right(5)))
+                row1.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
+                row1.child(weightBox.margins(Insets.right(5)))
+                row1.child(delBtn)
+                row.child(row1.margins(Insets.bottom(2)))
+
+                val row2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+                row2.child(Components.label(Component.translatable("gui.cdde.config.amount")).margins(Insets.right(2)))
+                row2.child(minBox.margins(Insets.right(2)))
+                row2.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
+                row2.child(maxBox.margins(Insets.right(5)))
+                row.child(row2)
 
                 endBox.child(row)
             }
@@ -179,8 +179,10 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 endBox.child(bRow.margins(Insets.of(10, 0, 5, 0)))
                 for (i in config.endFloorConfig.boss.indices) {
                     val spawn = config.endFloorConfig.boss[i]
-                    val row = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
-                    row.margins(Insets.bottom(2))
+                    val row = Containers.verticalFlow(Sizing.fill(100), Sizing.content())
+                    row.margins(Insets.bottom(5))
+                    row.padding(Insets.of(2))
+                    row.surface(Surface.flat(0x33000000.toInt()))
                     
                     val monWrapper = Containers.horizontalFlow(Sizing.content(), Sizing.content())
                     monWrapper.surface(Surface.flat(0x77000000.toInt()))
@@ -221,19 +223,19 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                         } else false
                     }
                     
-                    val weightBox = Components.textBox(Sizing.fixed(40))
+                    val weightBox = Components.textBox(Sizing.fixed(60))
                     weightBox.text(spawn.weight.toString())
                     weightBox.onChanged().subscribe { t -> spawn.weight = t.toIntOrNull() ?: 10 }
 
-                    val minLvlBox = Components.textBox(Sizing.fixed(30))
+                    val minLvlBox = Components.textBox(Sizing.fixed(60))
                     minLvlBox.text(spawn.minLevel.toString())
                     minLvlBox.onChanged().subscribe { t -> spawn.minLevel = t.toIntOrNull() ?: 1 }
 
-                    val maxLvlBox = Components.textBox(Sizing.fixed(30))
+                    val maxLvlBox = Components.textBox(Sizing.fixed(60))
                     maxLvlBox.text(spawn.maxLevel.toString())
                     maxLvlBox.onChanged().subscribe { t -> spawn.maxLevel = t.toIntOrNull() ?: 50 }
                     
-                    val recruitBox = Components.textBox(Sizing.fixed(30))
+                    val recruitBox = Components.textBox(Sizing.fixed(60))
                     recruitBox.text(spawn.baseRecruitment.toString())
                     recruitBox.onChanged().subscribe { t -> spawn.baseRecruitment = t.toIntOrNull() ?: 0 }
 
@@ -242,16 +244,21 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                         rebuildContent()
                     }
 
-                    row.child(monWrapper.margins(Insets.right(5)))
-                    row.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
-                    row.child(weightBox.margins(Insets.right(5)))
-                    row.child(Components.label(Component.translatable("gui.cdde.config.level")).margins(Insets.right(2)))
-                    row.child(minLvlBox.margins(Insets.right(2)))
-                    row.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
-                    row.child(maxLvlBox.margins(Insets.right(5)))
-                    row.child(Components.label(Component.literal("Recruit:")).margins(Insets.right(2)))
-                    row.child(recruitBox.margins(Insets.right(5)))
-                    row.child(delBtn)
+                    val row1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+                    row1.child(monWrapper.margins(Insets.right(5)))
+                    row1.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
+                    row1.child(weightBox.margins(Insets.right(5)))
+                    row1.child(delBtn)
+                    row.child(row1.margins(Insets.bottom(2)))
+
+                    val row2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+                    row2.child(Components.label(Component.translatable("gui.cdde.config.level")).margins(Insets.right(2)))
+                    row2.child(minLvlBox.margins(Insets.right(2)))
+                    row2.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
+                    row2.child(maxLvlBox.margins(Insets.right(5)))
+                    row2.child(Components.label(Component.literal("Recruit:")).margins(Insets.right(2)))
+                    row2.child(recruitBox.margins(Insets.right(5)))
+                    row.child(row2)
 
                     endBox.child(row)
                 }
@@ -266,8 +273,10 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 endBox.child(mRow.margins(Insets.of(10, 0, 5, 0)))
                 for (i in config.endFloorConfig.minion.indices) {
                     val spawn = config.endFloorConfig.minion[i]
-                    val row = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
-                    row.margins(Insets.bottom(2))
+                    val row = Containers.verticalFlow(Sizing.fill(100), Sizing.content())
+                    row.margins(Insets.bottom(5))
+                    row.padding(Insets.of(2))
+                    row.surface(Surface.flat(0x33000000.toInt()))
                     
                     val monWrapper = Containers.horizontalFlow(Sizing.content(), Sizing.content())
                     monWrapper.surface(Surface.flat(0x77000000.toInt()))
@@ -308,19 +317,19 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                         } else false
                     }
                     
-                    val weightBox = Components.textBox(Sizing.fixed(40))
+                    val weightBox = Components.textBox(Sizing.fixed(60))
                     weightBox.text(spawn.weight.toString())
                     weightBox.onChanged().subscribe { t -> spawn.weight = t.toIntOrNull() ?: 10 }
 
-                    val minLvlBox = Components.textBox(Sizing.fixed(30))
+                    val minLvlBox = Components.textBox(Sizing.fixed(60))
                     minLvlBox.text(spawn.minLevel.toString())
                     minLvlBox.onChanged().subscribe { t -> spawn.minLevel = t.toIntOrNull() ?: 1 }
 
-                    val maxLvlBox = Components.textBox(Sizing.fixed(30))
+                    val maxLvlBox = Components.textBox(Sizing.fixed(60))
                     maxLvlBox.text(spawn.maxLevel.toString())
                     maxLvlBox.onChanged().subscribe { t -> spawn.maxLevel = t.toIntOrNull() ?: 50 }
                     
-                    val recruitBox = Components.textBox(Sizing.fixed(30))
+                    val recruitBox = Components.textBox(Sizing.fixed(60))
                     recruitBox.text(spawn.baseRecruitment.toString())
                     recruitBox.onChanged().subscribe { t -> spawn.baseRecruitment = t.toIntOrNull() ?: 0 }
 
@@ -329,16 +338,21 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                         rebuildContent()
                     }
 
-                    row.child(monWrapper.margins(Insets.right(5)))
-                    row.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
-                    row.child(weightBox.margins(Insets.right(5)))
-                    row.child(Components.label(Component.translatable("gui.cdde.config.level")).margins(Insets.right(2)))
-                    row.child(minLvlBox.margins(Insets.right(2)))
-                    row.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
-                    row.child(maxLvlBox.margins(Insets.right(5)))
-                    row.child(Components.label(Component.literal("Recruit:")).margins(Insets.right(2)))
-                    row.child(recruitBox.margins(Insets.right(5)))
-                    row.child(delBtn)
+                    val row1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+                    row1.child(monWrapper.margins(Insets.right(5)))
+                    row1.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
+                    row1.child(weightBox.margins(Insets.right(5)))
+                    row1.child(delBtn)
+                    row.child(row1.margins(Insets.bottom(2)))
+
+                    val row2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+                    row2.child(Components.label(Component.translatable("gui.cdde.config.level")).margins(Insets.right(2)))
+                    row2.child(minLvlBox.margins(Insets.right(2)))
+                    row2.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
+                    row2.child(maxLvlBox.margins(Insets.right(5)))
+                    row2.child(Components.label(Component.literal("Recruit:")).margins(Insets.right(2)))
+                    row2.child(recruitBox.margins(Insets.right(5)))
+                    row.child(row2)
 
                     endBox.child(row)
                 }
@@ -374,18 +388,36 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
             headerRow.child(delBtn)
             ruleBox.child(headerRow.margins(Insets.bottom(10)))
 
+            val floorGlobalRow1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            floorGlobalRow1.child(createBiomePicker("gui.cdde.config.biome", rule.config.biome) { rule.config.biome = it; rebuildContent() }.margins(Insets.right(10)))
+            val genHazardsBox = Components.checkbox(Component.translatable("gui.cdde.config.generate_hazard_seas")).checked(rule.config.generateHazardSeas)
+            genHazardsBox.onChanged { checked -> rule.config.generateHazardSeas = checked }
+            floorGlobalRow1.child(genHazardsBox)
+            ruleBox.child(floorGlobalRow1.margins(Insets.bottom(10)))
+
+            val fStairRow1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            fStairRow1.child(createBlockPicker("Base Stair Block", rule.config.stairBaseBlock, allowStairs = false) { rule.config.stairBaseBlock = it; rebuildContent() }.margins(Insets.right(10)))
+            ruleBox.child(fStairRow1.margins(Insets.bottom(5)))
+            
+            val fStairRow2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            fStairRow2.child(createBlockPicker("Stair Step Block", rule.config.stairStepBlock, allowStairs = true, requireStairs = true) { rule.config.stairStepBlock = it; rebuildContent() })
+            ruleBox.child(fStairRow2.margins(Insets.bottom(10)))
+
             // Min/Max Rooms & Prune
             ruleBox.child(createLabelInput("gui.cdde.config.min_rooms", rule.config.minRooms.toString()) { rule.config.minRooms = it.toIntOrNull() ?: 5 })
             ruleBox.child(createLabelInput("gui.cdde.config.max_rooms", rule.config.maxRooms.toString()) { rule.config.maxRooms = it.toIntOrNull() ?: 10 })
             ruleBox.child(createLabelInput("gui.cdde.config.prune_percent", rule.config.deadEndPrunePercent.toString()) { rule.config.deadEndPrunePercent = it.toIntOrNull() ?: 20 })
 
             // Palettes
-            val palettesRow = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
-            palettesRow.child(createBlockPicker("block.cdde.palette_a", rule.config.paletteA) { rule.config.paletteA = it; rebuildContent() }.margins(Insets.right(10)))
-            palettesRow.child(createBlockPicker("block.cdde.palette_b", rule.config.paletteB) { rule.config.paletteB = it; rebuildContent() }.margins(Insets.right(10)))
-            palettesRow.child(createBlockPicker("block.cdde.palette_c", rule.config.paletteC) { rule.config.paletteC = it; rebuildContent() }.margins(Insets.right(10)))
-            palettesRow.child(createBlockPicker("block.cdde.palette_d", rule.config.paletteD) { rule.config.paletteD = it; rebuildContent() })
-            ruleBox.child(palettesRow.margins(Insets.bottom(10)))
+            val palettesRow1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            palettesRow1.child(createBlockPicker("block.cdde.palette_a", rule.config.paletteA) { rule.config.paletteA = it; rebuildContent() }.margins(Insets.right(10)))
+            palettesRow1.child(createBlockPicker("block.cdde.palette_b", rule.config.paletteB) { rule.config.paletteB = it; rebuildContent() }.margins(Insets.right(10)))
+            ruleBox.child(palettesRow1.margins(Insets.bottom(5)))
+
+            val palettesRow2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            palettesRow2.child(createBlockPicker("block.cdde.palette_c", rule.config.paletteC) { rule.config.paletteC = it; rebuildContent() }.margins(Insets.right(10)))
+            palettesRow2.child(createBlockPicker("block.cdde.palette_d", rule.config.paletteD) { rule.config.paletteD = it; rebuildContent() })
+            ruleBox.child(palettesRow2.margins(Insets.bottom(10)))
 
             // Hazards
             val hazardRow = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
@@ -481,8 +513,10 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
         
         for (i in config.pokemonSpawns.indices) {
             val spawn = config.pokemonSpawns[i]
-            val row = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
-            row.margins(Insets.bottom(2))
+            val row = Containers.verticalFlow(Sizing.fill(100), Sizing.content())
+            row.margins(Insets.bottom(5))
+            row.padding(Insets.of(2))
+            row.surface(Surface.flat(0x33000000.toInt()))
             
             val monWrapper = Containers.horizontalFlow(Sizing.content(), Sizing.content())
             monWrapper.surface(Surface.flat(0x77000000.toInt()))
@@ -523,19 +557,19 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 } else false
             }
             
-            val weightBox = Components.textBox(Sizing.fixed(40))
+            val weightBox = Components.textBox(Sizing.fixed(60))
             weightBox.text(spawn.weight.toString())
             weightBox.onChanged().subscribe { spawn.weight = it.toIntOrNull() ?: 10 }
             
-            val minLvlBox = Components.textBox(Sizing.fixed(30))
+            val minLvlBox = Components.textBox(Sizing.fixed(60))
             minLvlBox.text(spawn.minLevel.toString())
             minLvlBox.onChanged().subscribe { spawn.minLevel = it.toIntOrNull() ?: 1 }
 
-            val maxLvlBox = Components.textBox(Sizing.fixed(30))
+            val maxLvlBox = Components.textBox(Sizing.fixed(60))
             maxLvlBox.text(spawn.maxLevel.toString())
             maxLvlBox.onChanged().subscribe { spawn.maxLevel = it.toIntOrNull() ?: 50 }
 
-            val recruitBox = Components.textBox(Sizing.fixed(35))
+            val recruitBox = Components.textBox(Sizing.fixed(60))
             recruitBox.text(spawn.baseRecruitment.toString())
             recruitBox.onChanged().subscribe { spawn.baseRecruitment = it.toIntOrNull() ?: 0 }
 
@@ -544,16 +578,21 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 rebuildContent()
             }
 
-            row.child(monWrapper.margins(Insets.right(5)))
-            row.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
-            row.child(weightBox.margins(Insets.right(5)))
-            row.child(Components.label(Component.translatable("gui.cdde.config.level")).margins(Insets.right(2)))
-            row.child(minLvlBox.margins(Insets.right(2)))
-            row.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
-            row.child(maxLvlBox.margins(Insets.right(5)))
-            row.child(Components.label(Component.translatable("gui.cdde.config.recruit")).margins(Insets.right(2)))
-            row.child(recruitBox.margins(Insets.right(5)))
-            row.child(delBtn)
+            val row1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            row1.child(monWrapper.margins(Insets.right(5)))
+            row1.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
+            row1.child(weightBox.margins(Insets.right(5)))
+            row1.child(delBtn)
+            row.child(row1.margins(Insets.bottom(2)))
+
+            val row2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            row2.child(Components.label(Component.translatable("gui.cdde.config.level")).margins(Insets.right(2)))
+            row2.child(minLvlBox.margins(Insets.right(2)))
+            row2.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
+            row2.child(maxLvlBox.margins(Insets.right(5)))
+            row2.child(Components.label(Component.translatable("gui.cdde.config.recruit")).margins(Insets.right(2)))
+            row2.child(recruitBox.margins(Insets.right(5)))
+            row.child(row2)
             flow.child(row)
         }
 
@@ -572,8 +611,10 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
         
         for (i in config.itemSpawns.indices) {
             val spawn = config.itemSpawns[i]
-            val row = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
-            row.margins(Insets.bottom(2))
+            val row = Containers.verticalFlow(Sizing.fill(100), Sizing.content())
+            row.margins(Insets.bottom(5))
+            row.padding(Insets.of(2))
+            row.surface(Surface.flat(0x33000000.toInt()))
             
             val itemBtn = Components.button(Component.literal(spawn.item.split(":").lastOrNull()?.take(12) ?: spawn.item.take(12))) {
                 val allItems = BuiltInRegistries.ITEM.keySet().toList().sortedBy { it.toString() }.map { ResourceSelectorScreen.ResourceEntry(it.toString(), ItemStack(BuiltInRegistries.ITEM.get(it))) }
@@ -583,15 +624,15 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 }
             }
             
-            val weightBox = Components.textBox(Sizing.fixed(40))
+            val weightBox = Components.textBox(Sizing.fixed(60))
             weightBox.text(spawn.weight.toString())
             weightBox.onChanged().subscribe { spawn.weight = it.toIntOrNull() ?: 10 }
             
-            val minBox = Components.textBox(Sizing.fixed(30))
+            val minBox = Components.textBox(Sizing.fixed(60))
             minBox.text(spawn.minAmount.toString())
             minBox.onChanged().subscribe { spawn.minAmount = it.toIntOrNull() ?: 1 }
 
-            val maxBox = Components.textBox(Sizing.fixed(30))
+            val maxBox = Components.textBox(Sizing.fixed(60))
             maxBox.text(spawn.maxAmount.toString())
             maxBox.onChanged().subscribe { spawn.maxAmount = it.toIntOrNull() ?: 1 }
 
@@ -600,14 +641,19 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 rebuildContent()
             }
 
-            row.child(itemBtn.margins(Insets.right(5)))
-            row.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
-            row.child(weightBox.margins(Insets.right(5)))
-            row.child(Components.label(Component.translatable("gui.cdde.config.amount")).margins(Insets.right(2)))
-            row.child(minBox.margins(Insets.right(2)))
-            row.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
-            row.child(maxBox.margins(Insets.right(5)))
-            row.child(delBtn)
+            val row1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            row1.child(itemBtn.margins(Insets.right(5)))
+            row1.child(Components.label(Component.translatable("gui.cdde.config.weight")).margins(Insets.right(2)))
+            row1.child(weightBox.margins(Insets.right(5)))
+            row1.child(delBtn)
+            row.child(row1.margins(Insets.bottom(2)))
+
+            val row2 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            row2.child(Components.label(Component.translatable("gui.cdde.config.amount")).margins(Insets.right(2)))
+            row2.child(minBox.margins(Insets.right(2)))
+            row2.child(Components.label(Component.literal("-")).margins(Insets.right(2)))
+            row2.child(maxBox.margins(Insets.right(5)))
+            row.child(row2)
             flow.child(row)
         }
 
@@ -620,11 +666,11 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
     }
 
     private fun createLabelInput(translatableKey: String, value: String, onChanged: (String) -> Unit): io.wispforest.owo.ui.core.Component {
-        val row = Containers.horizontalFlow(Sizing.content(), Sizing.content())
+        val row = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
         row.margins(Insets.bottom(5))
         
         val label = Components.label(Component.translatable(translatableKey))
-        val box = Components.textBox(Sizing.fixed(100))
+        val box = Components.textBox(Sizing.fixed(60))
         box.text(value)
         box.onChanged().subscribe(onChanged)
         
@@ -662,6 +708,27 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 }.map { ResourceSelectorScreen.ResourceEntry(it.toString(), ItemStack(BuiltInRegistries.BLOCK.get(it).asItem())) }
             }
             openResourceSelector(Component.translatable("gui.cdde.config.select_block_for", Component.translatable(translatableKey).string), validBlocks, onSelect)
+        }
+        row.child(btn)
+        return row
+    }
+
+    private fun createBiomePicker(translatableKey: String, currentBiome: String, onSelect: (String) -> Unit): io.wispforest.owo.ui.core.Component {
+        val row = Containers.verticalFlow(Sizing.content(), Sizing.content())
+        row.child(Components.label(Component.translatable(translatableKey)).margins(Insets.bottom(2)))
+        
+        val shortName = currentBiome.split(":").lastOrNull() ?: currentBiome
+        val btn = Components.button(Component.literal(shortName)) {
+            val mc = net.minecraft.client.Minecraft.getInstance()
+            val registryAccess = mc.connection?.registryAccess() ?: mc.level?.registryAccess()
+            
+            val validBiomes = if (registryAccess != null) {
+                registryAccess.registryOrThrow(net.minecraft.core.registries.Registries.BIOME).keySet().toList().sortedBy { it.toString() }
+                    .map { ResourceSelectorScreen.ResourceEntry(it.toString()) }
+            } else {
+                emptyList()
+            }
+            openResourceSelector(Component.translatable("gui.cdde.config.select_biome"), validBiomes, onSelect)
         }
         row.child(btn)
         return row

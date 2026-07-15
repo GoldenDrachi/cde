@@ -30,7 +30,19 @@ class CDDEClient : ClientModInitializer {
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_WATER, RenderType.translucent())
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_LAVA, RenderType.translucent())
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_VOID, RenderType.translucent())
+        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_WALL_WATER, RenderType.translucent())
+        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_WALL_LAVA, RenderType.translucent())
+        BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_WALL_VOID, RenderType.translucent())
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.DUNGEON_PORTAL, RenderType.translucent())
+
+        net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry.BLOCK.register({ _, world, pos, _ ->
+            if (world != null && pos != null) {
+                net.minecraft.client.renderer.BiomeColors.getAverageWaterColor(world, pos)
+            } else {
+                0x3F76E4
+            }
+        }, ModBlocks.HAZARD_WATER, ModBlocks.HAZARD_WALL_WATER)
+
 
         net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry.BLOCK.register({ state, world, pos, tintIndex ->
             if (world != null && pos != null && tintIndex == 0) {
