@@ -5,19 +5,25 @@ A real-time action combat engine built as an addon for the Cobblemon mod in Mine
 ## Features
 
 * **Real-Time Combat**: Engage in action-packed real-time battles where you directly control the flow of combat.
-* **Player Morphing**: Take direct control of your Pokemon. Scaling hitboxes and safe-space checks ensure seamless transitions.
-* **Custom Move Engine**: JSON-driven move system allowing data-pack developers to create and balance attacks with granular control over hitboxes, damage, recoil, and status effects.
+* **Player Morphing**: Take direct control of your Pokemon. Scaling hitboxes ensure seamless transitions.
+* **Custom Move Engine**: JSON-driven move system allowing developers to create and balance attacks with granular control over hitboxes, damage, recoil, and status effects.
 * **Hostile AI**: Encounter wild hostile Pokemon that dynamically target and attack players or other entities.
-* **Immersive Visuals**: First-person perspective while morphed, utilizing the actual dimensions and animations of the active Pokemon. Active UI elements display abilities, cooldowns, and combat feedback.
+* **UI**: Active UI elements display attacks, cooldowns, and combat feedback.
 * **Status Effects & Items**: Deeply integrated statuses including poison, burn, paralysis, substitute, and weather-dependent multipliers. Uses an extensible subclass architecture for effects.
 
 ## Usage & Configuration
 
 The mod generates a configuration file at config/cdbe/config.json.
-Key features like Player Morphing and Hostile Spawns can be customized or toggled via this configuration file.
 
-* Press your designated Morph Key to take control of your active Pokemon.
-* A detailed combat log can be toggled using the /cdbe combatlog command.
+In config/cdbe/ you can also find folders with moves and ability .json files.
+Some moves are already built in, you can change them in the corrsponding folder or ad d more.
+"/cdbe reload" command, reloads the jsons directly ingame.
+
+(Abilities are currently not completly implemented)
+
+config/cdbe/ also provides a template.json aswell as a small guide for creating json files.
+
+A detailed combat log can be toggled using the "/cdbe combatlog" command.
 
 ## Transparency & AI-Use Disclaimer
 
