@@ -20,7 +20,14 @@
   "message.cdde.error.no_dimension": "Could not find cdde:dungeon dimension! Check your datapacks.",
   "message.cdde.generating": "Generating dungeon %s...",
   "message.cdde.error.generation_failed": "Generation failed: %s",
-  
+  "message.cdde.error.not_in_dungeon": "You are not currently in a dungeon!",
+  "message.cdde.error.no_active_dungeon": "No active dungeon instance found!",
+  "message.cdde.left_dungeon": "You have left the dungeon.",
+  "message.cdde.result.abandoned": "abandoned the exploration!",
+  "message.cdde.result.completed": "completed the exploration!",
+  "message.cdde.result.failed": "failed the exploration.",
+  "message.cdde.door_opens": "The door opens...",
+  "message.cdde.door_locked": "The door is locked.",
   "gui.cdde.config.title": "Editing Dungeon: %s",
   "gui.cdde.config.amount_of_floors": "Amount of Floors",
   "gui.cdde.config.biome": "Biome",
@@ -53,7 +60,4 @@
   "gui.cdde.result.title": "The Last Outing",
   "gui.cdde.result.place": "Place: %s",
   "gui.cdde.result.close": "Close",
-  "message.cdde.result.completed": "completed the exploration!",
-  "message.cdde.result.abandoned": "abandoned the dungeon.",
-  "message.cdde.result.failed": "failed the exploration..."
 }
