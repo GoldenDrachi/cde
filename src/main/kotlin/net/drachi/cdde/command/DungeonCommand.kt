@@ -216,6 +216,11 @@ object DungeonCommand {
         net.drachi.cdde.database.DatabaseManager.removeDungeonPlayer(instance.instanceId, player.uuid)
         
         source.sendSuccess({ Component.translatable("message.cdde.left_dungeon") }, true)
+
+        com.cobblemon.mod.common.Cobblemon.storage.getParty(player).heal()
+        val partyName = DungeonManager.getPartyName(player)
+        net.drachi.cdde.network.NetworkHandler.sendDungeonResult(player, instance.config.id, partyName, "message.cdde.result.abandoned")
+        
         return 1
     }
 

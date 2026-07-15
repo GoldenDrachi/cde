@@ -112,5 +112,43 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
                 }
             }
         }
+
+        net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.ALLOW_DEATH.register { player, damageSource, damageAmount ->
+            val dim = player.level().dimension().location()
+            if (dim.namespace == "cdde" && dim.path == "dungeon") {
+                val instance = DungeonManager.getActiveDungeon(player)
+                
+                // Heal player and remove effects
+                player.health = player.maxHealth
+                player.removeAllEffects()
+
+                // Teleport to overworld
+                val overworld = player.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
+                val returnPos = instance?.returnLocations?.get(player.uuid)
+                
+                player.portalCooldown = 100
+                if (returnPos != null && overworld != null) {
+                    player.teleportTo(overworld, returnPos.x.toDouble() + 0.5, returnPos.y.toDouble(), returnPos.z.toDouble() + 0.5, player.yRot, player.xRot)
+                } else if (overworld != null) {
+                    val spawn = overworld.sharedSpawnPos
+                    player.teleportTo(overworld, spawn.x.toDouble() + 0.5, spawn.y.toDouble(), spawn.z.toDouble() + 0.5, player.yRot, player.xRot)
+                }
+
+                // Remove from dungeon
+                if (instance != null) {
+                    instance.returnLocations.remove(player.uuid)
+                    net.drachi.cdde.database.DatabaseManager.removeDungeonPlayer(instance.instanceId, player.uuid)
+                }
+
+                // Heal Pokemon and show failure screen
+                com.cobblemon.mod.common.Cobblemon.storage.getParty(player).heal()
+                val partyName = DungeonManager.getPartyName(player)
+                val configId = instance?.config?.id ?: "Unknown"
+                net.drachi.cdde.network.NetworkHandler.sendDungeonResult(player, configId, partyName, "message.cdde.result.failed")
+
+                return@register false
+            }
+            return@register true
+        }
     }
 }

@@ -325,6 +325,22 @@ object DungeonManager {
         }
     }
 
+    fun getPartyName(player: net.minecraft.server.level.ServerPlayer): String {
+        val partyMembers = net.drachi.cdde.api.GroupAPI.getPartyMembers(player.uuid)
+        return if (partyMembers != null && partyMembers.size > 1) {
+            // Assume the first member is the leader if GroupAPI doesn't specify
+            val leaderId = partyMembers.first()
+            val leader = player.server.playerList.getPlayer(leaderId)
+            if (leader != null) {
+                "${leader.name.string}'s Party"
+            } else {
+                "${player.name.string}'s Party"
+            }
+        } else {
+            player.name.string
+        }
+    }
+
     fun onPlayerInteractStairs(player: net.minecraft.server.level.ServerPlayer, stairsPos: net.minecraft.core.BlockPos) {
         val level = player.serverLevel()
         val dim = level.dimension().location()
@@ -336,6 +352,30 @@ object DungeonManager {
         val expectedOriginZ = instanceIndex * 10000
 
         val instance = activeDungeons.values.find { it.originZ == expectedOriginZ } ?: return
+
+        val partyMembers = net.drachi.cdde.api.GroupAPI.getPartyMembers(player.uuid) ?: listOf(player.uuid)
+        val playersToTeleport = partyMembers.mapNotNull { player.server.playerList.getPlayer(it) }
+        val partyName = getPartyName(player)
+
+        // Check for completion
+        if (instance.currentFloor >= instance.config.amountOfFloors) {
+            val overworld = player.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)
+            playersToTeleport.forEach { member ->
+                val returnPos = instance.returnLocations[member.uuid]
+                
+                member.portalCooldown = 100
+                if (returnPos != null && overworld != null) {
+                    member.teleportTo(overworld, returnPos.x.toDouble() + 0.5, returnPos.y.toDouble(), returnPos.z.toDouble() + 0.5, member.yRot, member.xRot)
+                } else if (overworld != null) {
+                    val spawn = overworld.sharedSpawnPos
+                    member.teleportTo(overworld, spawn.x.toDouble(), spawn.y.toDouble(), spawn.z.toDouble(), member.yRot, member.xRot)
+                }
+                
+                com.cobblemon.mod.common.Cobblemon.storage.getParty(member).heal()
+                net.drachi.cdde.network.NetworkHandler.sendDungeonResult(member, instance.config.id, partyName, "message.cdde.result.completed")
+            }
+            return
+        }
 
         // Teleport to next floor
         instance.currentFloor++
@@ -354,10 +394,6 @@ object DungeonManager {
         if (generatorNext.stairPosition != null) {
             instance.stairPositions[instance.currentFloor] = generatorNext.stairPosition!!
         }
-
-        // Find all party members (fallback to just the player if not in a party)
-        val partyMembers = net.drachi.cdde.api.GroupAPI.getPartyMembers(player.uuid) ?: listOf(player.uuid)
-        val playersToTeleport = partyMembers.mapNotNull { player.server.playerList.getPlayer(it) }
 
         // Start position for the floor we are entering
         val startPos = instance.floorStartPositions[instance.currentFloor] ?: net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 64 + 1, instance.originZ)

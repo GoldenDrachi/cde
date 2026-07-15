@@ -26,6 +26,7 @@ class CDDEClient : ClientModInitializer {
         }
 
 
+
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_WATER, RenderType.translucent())
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_LAVA, RenderType.translucent())
         BlockRenderLayerMap.INSTANCE.putBlock(ModBlocks.HAZARD_VOID, RenderType.translucent())

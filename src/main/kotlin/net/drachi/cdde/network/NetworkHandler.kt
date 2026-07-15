@@ -8,6 +8,9 @@ import net.minecraft.server.level.ServerPlayer
 @JvmRecord
 data class SyncSelectedSlotPayload(val slotIndex: Int)
 
+@JvmRecord
+data class DungeonResultPayload(val dungeonName: String, val partyName: String, val messageKey: String)
+
 object NetworkHandler {
     val CHANNEL: OwoNetChannel = OwoNetChannel.create(ResourceLocation.fromNamespaceAndPath("cdde", "main"))
 
@@ -16,6 +19,12 @@ object NetworkHandler {
             val player = context.player() as? ServerPlayer ?: return@registerServerbound
             player.server.execute {
                 PlayerHazardStateManager.setSelectedSlot(player.uuid, payload.slotIndex)
+            }
+        }
+
+        CHANNEL.registerClientbound(DungeonResultPayload::class.java) { payload, context ->
+            net.minecraft.client.Minecraft.getInstance().execute {
+                net.minecraft.client.Minecraft.getInstance().setScreen(net.drachi.cdde.client.DungeonResultScreen(payload))
             }
         }
 
@@ -36,5 +45,9 @@ object NetworkHandler {
 
     fun sendSyncSelectedSlot(slotIndex: Int) {
         CHANNEL.clientHandle().send(SyncSelectedSlotPayload(slotIndex))
+    }
+
+    fun sendDungeonResult(player: ServerPlayer, dungeonName: String, partyName: String, messageKey: String) {
+        CHANNEL.serverHandle(player).send(DungeonResultPayload(dungeonName, partyName, messageKey))
     }
 }

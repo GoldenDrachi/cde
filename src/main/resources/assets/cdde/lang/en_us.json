@@ -47,5 +47,11 @@
   "gui.cdde.config.select_pokemon": "Select Pokemon",
   "gui.cdde.config.select_item": "Select Item",
   "gui.cdde.config.select_theme": "Select Theme",
-  "gui.cdde.config.select_block_for": "Select Block for %s"
+  "gui.cdde.config.select_block_for": "Select Block for %s",
+  "gui.cdde.result.title": "The Last Outing",
+  "gui.cdde.result.place": "Place: %s",
+  "gui.cdde.result.close": "Close",
+  "message.cdde.result.completed": "completed the exploration!",
+  "message.cdde.result.abandoned": "abandoned the dungeon.",
+  "message.cdde.result.failed": "failed the exploration..."
 }
