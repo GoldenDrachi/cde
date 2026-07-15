@@ -232,9 +232,63 @@ class DungeonGenerator(
             this.startPosition = customPlayerSpawns.first()
         }
 
+        // --- CULL SEALED ENCLOSED WALL CELLS ---
+        // If an enclosed wall cell is completely surrounded by closed rooms, it shouldn't be a hazard sea.
+        // It should be solid walls. We only keep them if they are exposed to an "open hallway".
+        val exposedWallCells = mutableSetOf<Pair<Int, Int>>()
+        for (piece in placedPieces) {
+            val relativeFloorY = (piece.parsedJigsaws.minOfOrNull { it.pos.y - piece.pos.y } ?: 0)
+            val openDirs = mapper.detectOpenDirections(piece.template, piece.rotation, relativeFloorY)
+            
+            val box = piece.boundingBox
+            val minCx = Math.floorDiv(box.minX() - origin.x, DungeonGrid.CELL_SIZE)
+            val maxCx = Math.floorDiv(box.maxX() - origin.x, DungeonGrid.CELL_SIZE)
+            val minCz = Math.floorDiv(box.minZ() - origin.z, DungeonGrid.CELL_SIZE)
+            val maxCz = Math.floorDiv(box.maxZ() - origin.z, DungeonGrid.CELL_SIZE)
+            
+            for (cx in minCx..maxCx) {
+                for (cz in minCz..maxCz) {
+                    if (openDirs.contains(net.minecraft.core.Direction.WEST)) exposedWallCells.add(Pair(cx - 1, cz))
+                    if (openDirs.contains(net.minecraft.core.Direction.EAST)) exposedWallCells.add(Pair(cx + 1, cz))
+                    if (openDirs.contains(net.minecraft.core.Direction.NORTH)) exposedWallCells.add(Pair(cx, cz - 1))
+                    if (openDirs.contains(net.minecraft.core.Direction.SOUTH)) exposedWallCells.add(Pair(cx, cz + 1))
+                }
+            }
+        }
+        
+        val queue = java.util.ArrayDeque<Pair<Int, Int>>()
+        val validEnclosed = mutableSetOf<Pair<Int, Int>>()
+        for (cell in enclosedWallCells) {
+            if (exposedWallCells.contains(cell)) {
+                queue.add(cell)
+                validEnclosed.add(cell)
+            }
+        }
+        
+        while (queue.isNotEmpty()) {
+            val curr = queue.poll()
+            val neighbors = listOf(
+                Pair(curr.first + 1, curr.second),
+                Pair(curr.first - 1, curr.second),
+                Pair(curr.first, curr.second + 1),
+                Pair(curr.first, curr.second - 1)
+            )
+            for (n in neighbors) {
+                if (enclosedWallCells.contains(n) && !validEnclosed.contains(n)) {
+                    validEnclosed.add(n)
+                    queue.add(n)
+                }
+            }
+        }
+        
+        enclosedWallCells.clear()
+        enclosedWallCells.addAll(validEnclosed)
 
         // Render Hazard Seas first (before stairs, so stairs are not overwritten or placed on hazard sea)
         renderHazardSeas(grid, mapper)
+        
+        // Render solid outer shell using paletteA to encapsulate dungeon and prevent ghost movement
+        renderOuterShell(grid)
 
         // Place stairs in one of the rooms
         placeStairs(roomPieces, theme)
@@ -861,56 +915,45 @@ class DungeonGenerator(
     }
 
     private fun findCeilingYAndBlock(piece: StructurePiece): Pair<Int, BlockState>? {
-        val settings = StructurePlaceSettings().setRotation(piece.rotation)
-        val blocks = piece.template.filterBlocks(BlockPos.ZERO, settings, null as net.minecraft.world.level.block.Block?)
-        val ceilingBlocks = blocks.filter {
+        val palettes = TemplateMapper.getPalettes(piece.template)
+        val firstPalette = palettes.firstOrNull() ?: return null
+        val ceilingBlocks = firstPalette.blocks().filter {
             it.pos.y >= 3 && !it.state.isAir && it.state.block != Blocks.JIGSAW && it.state.fluidState.isEmpty
         }
         if (ceilingBlocks.isEmpty()) return null
         val maxY = ceilingBlocks.maxOf { it.pos.y }
         val state = ceilingBlocks.first { it.pos.y == maxY }.state
         val worldY = piece.pos.y + maxY
-        return Pair(worldY, state)
+        
+        val id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.block).toString()
+        val replacedState = when (id) {
+            "cdde:palette_a" -> net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.parse(floorConfig.paletteA)).defaultBlockState()
+            "cdde:palette_b" -> net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.parse(floorConfig.paletteB)).defaultBlockState()
+            "cdde:palette_c" -> net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.parse(floorConfig.paletteC)).defaultBlockState()
+            "cdde:palette_d" -> net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.parse(floorConfig.paletteD)).defaultBlockState()
+            else -> state
+        }
+        
+        return Pair(worldY, replacedState)
     }
 
     private fun renderHazardSeas(grid: DungeonGrid, mapper: TemplateMapper) {
         if (!floorConfig.generateHazardSeas) return
         val hazardSeaCells = mutableSetOf<Pair<Int, Int>>()
-        val queue = java.util.ArrayDeque<Pair<Int, Int>>()
         
+        // 1. Add ALL enclosed wall cells (fixes large disconnected areas not generating)
+        hazardSeaCells.addAll(enclosedWallCells)
+        
+        // 2. Add ALL cells occupied by any piece (fixes Endpieces and partial rooms leaving void gaps)
         for (piece in placedPieces) {
-            val relativeFloorY = (piece.template.filterBlocks(BlockPos.ZERO, StructurePlaceSettings().setRotation(piece.rotation), Blocks.JIGSAW).minOfOrNull { it.pos.y } ?: 1) - 1
-            val openDirs = mapper.detectOpenDirections(piece.template, piece.rotation, relativeFloorY)
-            if (openDirs.isNotEmpty()) {
-                val cx = Math.floorDiv(piece.pos.x - origin.x, DungeonGrid.CELL_SIZE)
-                val cz = Math.floorDiv(piece.pos.z - origin.z, DungeonGrid.CELL_SIZE)
-                val size = piece.template.getSize(piece.rotation)
-                val wCells = kotlin.math.ceil(size.x / DungeonGrid.CELL_SIZE.toDouble()).toInt().coerceAtLeast(1)
-                val dCells = kotlin.math.ceil(size.z / DungeonGrid.CELL_SIZE.toDouble()).toInt().coerceAtLeast(1)
-                for (dir in openDirs) {
-                    val adjCells = mapper.getAdjacentCellsForFace(cx, cz, wCells, dCells, dir)
-                    for (p in adjCells) {
-                        if (enclosedWallCells.contains(p)) {
-                            if (hazardSeaCells.add(p)) {
-                                queue.add(p)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        while (queue.isNotEmpty()) {
-            val (cx, cz) = queue.poll()
-            for (dir in Direction.values()) {
-                if (dir.axis.isVertical) continue
-                val nx = cx + dir.stepX
-                val nz = cz + dir.stepZ
-                val p = Pair(nx, nz)
-                if (enclosedWallCells.contains(p)) {
-                    if (hazardSeaCells.add(p)) {
-                        queue.add(p)
-                    }
+            val cx = Math.floorDiv(piece.pos.x - origin.x, DungeonGrid.CELL_SIZE)
+            val cz = Math.floorDiv(piece.pos.z - origin.z, DungeonGrid.CELL_SIZE)
+            val size = piece.template.getSize(piece.rotation)
+            val wCells = kotlin.math.ceil(size.x / DungeonGrid.CELL_SIZE.toDouble()).toInt().coerceAtLeast(1)
+            val dCells = kotlin.math.ceil(size.z / DungeonGrid.CELL_SIZE.toDouble()).toInt().coerceAtLeast(1)
+            for (dx in 0 until wCells) {
+                for (dz in 0 until dCells) {
+                    hazardSeaCells.add(Pair(cx + dx, cz + dz))
                 }
             }
         }
@@ -951,21 +994,29 @@ class DungeonGenerator(
                     val wx = worldStartX + bx
                     val wz = worldStartZ + bz
                     
-                    level.setBlock(BlockPos(wx, origin.y - 3, wz), floorState, 3)
+                    val isInsidePieceBox = adjacentPieces.any {
+                        val box = it.boundingBox
+                        wx >= box.minX() && wx <= box.maxX() && wz >= box.minZ() && wz <= box.maxZ()
+                    }
+                    if (isInsidePieceBox) continue
+                    
+                    val floorPos = BlockPos(wx, origin.y - 3, wz)
+                    if (level.getBlockState(floorPos).isAir) {
+                        level.setBlock(floorPos, floorState, 3)
+                    }
+                    
                     for (wy in (origin.y - 2)..origin.y) {
-                        level.setBlock(BlockPos(wx, wy, wz), hazardState, 3)
-                        hazardPositions.add(BlockPos(wx, wy, wz))
+                        val wPos = BlockPos(wx, wy, wz)
+                        if (level.getBlockState(wPos).isAir) {
+                            level.setBlock(wPos, hazardState, 3)
+                            hazardPositions.add(wPos)
+                        }
                     }
                     
                     if (hasCeiling) {
-                        for (wy in (origin.y + 1) until avgCeilingY) {
-                            level.setBlock(BlockPos(wx, wy, wz), Blocks.AIR.defaultBlockState(), 3)
-                        }
-                        level.setBlock(BlockPos(wx, avgCeilingY, wz), ceilingState, 3)
-                        level.setBlock(BlockPos(wx, avgCeilingY + 1, wz), Blocks.STONE.defaultBlockState(), 3)
-                    } else {
-                        for (wy in (origin.y + 1)..(origin.y + 5)) {
-                            level.setBlock(BlockPos(wx, wy, wz), Blocks.AIR.defaultBlockState(), 3)
+                        val cPos = BlockPos(wx, avgCeilingY, wz)
+                        if (level.getBlockState(cPos).isAir) {
+                            level.setBlock(cPos, ceilingState, 3)
                         }
                     }
                 }
@@ -976,12 +1027,94 @@ class DungeonGenerator(
                     for (bz in listOf(1, 3, 5)) {
                         val wx = worldStartX + bx
                         val wz = worldStartZ + bz
-                        level.setBlock(BlockPos(wx, avgCeilingY - 1, wz), lightState, 3)
+                        
+                        val isInsidePieceBox = adjacentPieces.any {
+                            val box = it.boundingBox
+                            wx >= box.minX() && wx <= box.maxX() && wz >= box.minZ() && wz <= box.maxZ()
+                        }
+                        if (isInsidePieceBox) continue
+                        
+                        val lPos = BlockPos(wx, avgCeilingY - 1, wz)
+                        if (level.getBlockState(lPos).isAir) {
+                            level.setBlock(lPos, lightState, 3)
+                        }
                     }
                 }
             }
         }
         CobblemonDungeonDungeonsEngine.logger.info("Rendered hazard sea for ${hazardSeaCells.size} grid cells.")
+    }
+
+    private fun renderOuterShell(grid: DungeonGrid) {
+        val dungeonAreaCells = mutableSetOf<Pair<Int, Int>>()
+        dungeonAreaCells.addAll(enclosedWallCells)
+        
+        for (piece in placedPieces) {
+            val box = piece.boundingBox
+            val minCx = Math.floorDiv(box.minX() - origin.x, DungeonGrid.CELL_SIZE)
+            val maxCx = Math.floorDiv(box.maxX() - origin.x, DungeonGrid.CELL_SIZE)
+            val minCz = Math.floorDiv(box.minZ() - origin.z, DungeonGrid.CELL_SIZE)
+            val maxCz = Math.floorDiv(box.maxZ() - origin.z, DungeonGrid.CELL_SIZE)
+            
+            for (cx in minCx..maxCx) {
+                for (cz in minCz..maxCz) {
+                    dungeonAreaCells.add(Pair(cx, cz))
+                }
+            }
+        }
+        
+        if (dungeonAreaCells.isEmpty()) return
+        
+        val minCx = dungeonAreaCells.minOf { it.first }
+        val maxCx = dungeonAreaCells.maxOf { it.first }
+        val minCz = dungeonAreaCells.minOf { it.second }
+        val maxCz = dungeonAreaCells.maxOf { it.second }
+        
+        val maxPieceY = placedPieces.maxOfOrNull { it.pos.y + it.template.getSize(it.rotation).y } ?: (origin.y + 10)
+        
+        val minWy = origin.y - 4
+        val maxWy = maxPieceY + 1
+        
+        val paletteAState = net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.parse(floorConfig.paletteA)).defaultBlockState()
+        val lightState = net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.parse("minecraft:light")).defaultBlockState()
+        
+        for (cx in (minCx - 1)..(maxCx + 1)) {
+            for (cz in (minCz - 1)..(maxCz + 1)) {
+                val worldStartX = origin.x + cx * DungeonGrid.CELL_SIZE
+                val worldStartZ = origin.z + cz * DungeonGrid.CELL_SIZE
+                val inDungeonGrid = dungeonAreaCells.contains(Pair(cx, cz))
+                
+                for (bx in 0 until DungeonGrid.CELL_SIZE) {
+                    for (bz in 0 until DungeonGrid.CELL_SIZE) {
+                        val wx = worldStartX + bx
+                        val wz = worldStartZ + bz
+                        
+                        val isInsidePieceBox = placedPieces.any {
+                            val box = it.boundingBox
+                            wx >= box.minX() && wx <= box.maxX() && wz >= box.minZ() && wz <= box.maxZ()
+                        }
+                        
+                        val isHazardSea = floorConfig.generateHazardSeas && inDungeonGrid && !isInsidePieceBox
+                        val shouldBeWall = !isInsidePieceBox && !isHazardSea
+                        
+                        if (shouldBeWall) {
+                            for (wy in minWy..maxWy) {
+                                level.setBlock(BlockPos(wx, wy, wz), paletteAState, 3)
+                            }
+                        } else {
+                            var topY = maxWy
+                            while (topY > minWy && level.getBlockState(BlockPos(wx, topY, wz)).isAir) {
+                                topY--
+                            }
+                            if (topY >= minWy) {
+                                level.setBlock(BlockPos(wx, topY + 1, wz), lightState, 3)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        CobblemonDungeonDungeonsEngine.logger.info("Rendered outer shell encasing dungeon from y=$minWy to y=$maxWy.")
     }
 }
 
