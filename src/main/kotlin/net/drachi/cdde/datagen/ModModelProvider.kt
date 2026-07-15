@@ -20,13 +20,9 @@ class ModModelProvider(output: FabricDataOutput) : FabricModelProvider(output) {
         blockStateModelGenerator.createTrivialCube(ModBlocks.MINION_SPAWN)
         blockStateModelGenerator.createTrivialCube(ModBlocks.TREASURE_DOOR)
         blockStateModelGenerator.createTrivialCube(ModBlocks.BOSS_DOOR)
-        blockStateModelGenerator.createTrivialCube(ModBlocks.HAZARD_WALL_WATER)
-        blockStateModelGenerator.createTrivialCube(ModBlocks.HAZARD_WALL_LAVA)
-        blockStateModelGenerator.createTrivialCube(ModBlocks.HAZARD_WALL_VOID)
     }
 
     override fun generateItemModels(itemModelGenerator: ItemModelGenerators) {
         // Automatically handled by createTrivialCube for simple blocks
-        itemModelGenerator.generateFlatItem(net.drachi.cdde.registry.ModItems.TREASURE_KEY, net.minecraft.data.models.model.ModelTemplates.FLAT_ITEM)
     }
 }
