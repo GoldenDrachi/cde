@@ -70,6 +70,18 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
                         }
                     }
                 }
+
+                if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity) {
+                    val w = entity.bbWidth
+                    val h = entity.bbHeight
+                    if (w > 3.0f || h > 4.0f) {
+                        val widthScale = 3.0f / w
+                        val heightScale = 4.0f / h
+                        val scale = kotlin.math.min(widthScale, heightScale)
+                        entity.pokemon.scaleModifier *= scale
+                        entity.refreshDimensions() // Ensure bounding box updates
+                    }
+                }
             }
         }
 
