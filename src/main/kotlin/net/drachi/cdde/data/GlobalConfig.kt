@@ -10,10 +10,12 @@ enum class StorageMode {
 
 @Serializable
 data class GlobalConfig(
+    // --- Storage Settings ---
+    val _comment_storageMode: String = "How to store active dungeon instances and player unlocks. Options: 'JSON' (local files) or 'DATABASE' (SQL).",
     val storageMode: StorageMode = StorageMode.JSON,
     
     // --- Database Configuration ---
-    val _comment_database: String = "Database type: 'sqlite' or 'mariadb'. SQLite creates a local file. MariaDB requires host credentials.",
+    val _comment_database: String = "Used if storageMode is DATABASE. Stores active dungeons and unlocked dungeons (useful for cross-server syncing). Database type: 'sqlite' (local file) or 'mariadb' (requires host credentials).",
     val databaseType: String = "sqlite",
     val databaseHost: String = "127.0.0.1",
     val databasePort: Int = 3306,
