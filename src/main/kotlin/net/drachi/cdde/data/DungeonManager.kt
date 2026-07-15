@@ -32,7 +32,8 @@ data class ActiveDungeon(
     val returnLocations: MutableMap<UUID, net.minecraft.core.BlockPos> = mutableMapOf(),
     val floorStartPositions: MutableMap<Int, net.minecraft.core.BlockPos> = mutableMapOf(),
     val stairPositions: MutableMap<Int, net.minecraft.core.BlockPos> = mutableMapOf(),
-    var lastActiveTime: Long = System.currentTimeMillis()
+    var lastActiveTime: Long = System.currentTimeMillis(),
+    var freezeTicks: Int = 0
 )
 
 object DungeonManager {
@@ -59,6 +60,20 @@ object DungeonManager {
 
     fun isInDungeon(player: net.minecraft.world.entity.player.Player): Boolean {
         return getActiveDungeon(player) != null
+    }
+
+    fun freezeDungeon(instanceId: UUID, ticks: Int = -1) {
+        val instance = activeDungeons[instanceId]
+        if (instance != null) {
+            instance.freezeTicks = ticks
+        }
+    }
+
+    fun unfreezeDungeon(instanceId: UUID) {
+        val instance = activeDungeons[instanceId]
+        if (instance != null) {
+            instance.freezeTicks = 0
+        }
     }
     
     fun clearSpawns() {
@@ -236,7 +251,35 @@ object DungeonManager {
         return instance
     }
 
-    fun tickDungeonLifecycle(server: net.minecraft.server.MinecraftServer) {
+    fun tick(server: net.minecraft.server.MinecraftServer) {
+        val level = server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cdde", "dungeon")))
+        if (level == null) return
+        
+        // Handle frozen dungeons (freezeTicks > 0 means timed, freezeTicks < 0 means indefinite)
+        val frozenDungeons = activeDungeons.values.filter { it.freezeTicks != 0 }
+        frozenDungeons.forEach { 
+            if (it.freezeTicks > 0) {
+                it.freezeTicks-- 
+            }
+        }
+        if (frozenDungeons.isNotEmpty()) {
+            for (entity in level.allEntities) {
+                if (entity is net.minecraft.world.entity.LivingEntity) {
+                    val z = entity.blockPosition().z
+                    val instanceIndex = z / 10000
+                    val expectedOriginZ = instanceIndex * 10000
+                    
+                    val inFrozenDungeon = frozenDungeons.any { it.originZ == expectedOriginZ }
+                    if (inFrozenDungeon) {
+                        entity.addEffect(net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN, 2, 255, false, false, false))
+                        entity.addEffect(net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.JUMP, 2, 200, false, false, false))
+                        entity.addEffect(net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.WEAKNESS, 2, 255, false, false, false))
+                        entity.addEffect(net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.DIG_SLOWDOWN, 2, 255, false, false, false))
+                    }
+                }
+            }
+        }
+
         val now = System.currentTimeMillis()
         val timeoutMs = ConfigManager.globalConfig.abandonTimeoutMinutes * 60L * 1000L
         
@@ -438,6 +481,9 @@ object DungeonManager {
         )
         var spawnIndex = 0
 
+        // Freeze entities for 1.5s
+        freezeDungeon(instance.instanceId, 30)
+
         // Teleport everyone and their Pokemon BEFORE wiping the old chunks
         playersToTeleport.forEach { member ->
             // Pick a spot for the player
@@ -597,6 +643,9 @@ object DungeonManager {
             Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
         )
         var spawnIndex = 0
+
+        // Freeze entities for 1.5s
+        freezeDungeon(instance.instanceId, 30)
 
         playersToTeleport.forEach { member ->
             member.portalCooldown = 100

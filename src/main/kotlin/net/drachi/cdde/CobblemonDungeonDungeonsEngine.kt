@@ -24,7 +24,7 @@ object CobblemonDungeonDungeonsEngine : ModInitializer {
         }
 
         ServerTickEvents.START_SERVER_TICK.register { server ->
-            net.drachi.cdde.data.DungeonManager.tickDungeonLifecycle(server)
+            net.drachi.cdde.data.DungeonManager.tick(server)
             
             for (player in server.playerList.players) {
                 val instance = net.drachi.cdde.data.DungeonManager.getActiveDungeon(player)
