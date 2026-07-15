@@ -106,6 +106,18 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
             
             endBox.child(Components.label(Component.literal("End Floor Configuration (${config.endFloorType.name})")).margins(Insets.bottom(10)))
             
+            val themeRow = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
+            themeRow.child(Components.label(Component.literal("Theme:")).margins(Insets.right(10)))
+            val themeLabel = if (config.endFloorConfig.theme.isEmpty()) "Select Theme" else config.endFloorConfig.theme
+            themeRow.child(Components.button(Component.literal(themeLabel)) {
+                val themes = net.drachi.cdde.data.DungeonManager.availableRooms.keys.sorted().map { net.drachi.cdde.client.ResourceSelectorScreen.ResourceEntry(it) }
+                openResourceSelector(Component.translatable("gui.cdde.config.select_theme"), themes) { selectedTheme ->
+                    config.endFloorConfig.theme = selectedTheme
+                    rebuildContent()
+                }
+            })
+            endBox.child(themeRow.margins(Insets.bottom(10)))
+            
             val tRow = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
             tRow.child(Components.label(Component.literal("Treasure Items:")).margins(Insets.right(10)))
             tRow.child(Components.button(Component.literal("+")) {

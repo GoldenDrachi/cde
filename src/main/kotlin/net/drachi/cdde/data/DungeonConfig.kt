@@ -41,6 +41,7 @@ data class FloorConfig(
 
 @Serializable
 data class EndFloorConfig(
+    var theme: String = "",
     var treasure: MutableList<ItemSpawnEntry> = mutableListOf(),
     var boss: MutableList<PokemonSpawnEntry> = mutableListOf(),
     var minion: MutableList<PokemonSpawnEntry> = mutableListOf()

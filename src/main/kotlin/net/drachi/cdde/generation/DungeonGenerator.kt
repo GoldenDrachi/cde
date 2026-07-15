@@ -72,7 +72,17 @@ class DungeonGenerator(
         DungeonManager.clearRegion(level, bounds, config, floorConfig)
 
         // ── 0. Resolve Theme ──────────────────────────────────────────────
-        val theme = DungeonManager.availableRooms.keys.firstOrNull() ?: run {
+        val theme = if (isEndFloor && config.endFloorConfig.theme.isNotEmpty()) {
+            config.endFloorConfig.theme
+        } else {
+            val possibleThemes = floorConfig.activeSets.filter { net.drachi.cdde.data.DungeonManager.availableRooms.containsKey(it) }
+            if (possibleThemes.isNotEmpty()) {
+                possibleThemes[level.random.nextInt(possibleThemes.size)]
+            } else {
+                val keys = net.drachi.cdde.data.DungeonManager.availableRooms.keys.toList()
+                if (keys.isNotEmpty()) keys[level.random.nextInt(keys.size)] else null
+            }
+        } ?: run {
             CobblemonDungeonDungeonsEngine.logger.error("No themes available — no structures loaded.")
             return
         }
