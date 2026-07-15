@@ -590,8 +590,30 @@ class DungeonGenerator(
                     val stepBlock = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(config.stairStepBlock))
                     val stairBlock = stepBlock as? net.minecraft.world.level.block.StairBlock
                     
-                    val climbDir = DungeonGrid.CARDINALS[level.random.nextInt(DungeonGrid.CARDINALS.size)]
-                    
+                    val validDirs = DungeonGrid.CARDINALS.filter { dir ->
+                        val approachPos = when (dir) {
+                            net.minecraft.core.Direction.SOUTH -> spot.offset(1, 0, -1)
+                            net.minecraft.core.Direction.NORTH -> spot.offset(1, 0, 3)
+                            net.minecraft.core.Direction.EAST -> spot.offset(-1, 0, 1)
+                            net.minecraft.core.Direction.WEST -> spot.offset(3, 0, 1)
+                            else -> spot
+                        }
+                        val floorState = level.getBlockState(approachPos)
+                        val feetState = level.getBlockState(approachPos.above())
+                        val headState = level.getBlockState(approachPos.above(2))
+                        val isHazard = floorState.block == net.drachi.cdde.registry.ModBlocks.HAZARD || 
+                                       floorState.fluidState.isSource ||
+                                       feetState.block == net.drachi.cdde.registry.ModBlocks.HAZARD || 
+                                       feetState.fluidState.isSource
+                        !isHazard && !floorState.isAir && floorState.blocksMotion() && 
+                        (feetState.isAir || !feetState.blocksMotion()) && 
+                        (headState.isAir || !headState.blocksMotion())
+                    }
+                    val climbDir = if (validDirs.isNotEmpty()) {
+                        validDirs[level.random.nextInt(validDirs.size)]
+                    } else {
+                        DungeonGrid.CARDINALS[level.random.nextInt(DungeonGrid.CARDINALS.size)]
+                    }
                     // Center step dx, dz formula for stairPosition (u = 2, v = 1)
                     val targetDx = when (climbDir) {
                         Direction.SOUTH -> 1
@@ -619,7 +641,7 @@ class DungeonGenerator(
                                     else -> Pair(v, u)
                                 }
                                 
-                                val bpos = spot.offset(dx, 0, dz)
+                                val bpos = spot.offset(dx, 1, dz)
                                 
                                 // A full 3-blocks-wide staircase
                                 if (u == 0) {
@@ -643,7 +665,7 @@ class DungeonGenerator(
                             }
                         }
                         
-                        this.stairPosition = spot.offset(targetDx, 2, targetDz)
+                        this.stairPosition = spot.offset(targetDx, 3, targetDz)
                     } else { // DOWN (Sunken Pit)
                         // 1. Build the stair trench steps inside 3x3 (3-blocks-wide)
                         // Shifted up by 1 block so the top step starts exactly at floorY.
