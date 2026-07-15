@@ -103,4 +103,19 @@ object EntityUtil {
 
         return casterOwner != null && casterOwner == targetOwner
     }
+
+    /**
+     * Helper to safely constrain EntityDimensions, called from Java mixins
+     * where accessing width/height might fail due to visibility.
+     */
+    fun constrainDimensions(dimensions: net.minecraft.world.entity.EntityDimensions, maxWidth: Float, maxHeight: Float): net.minecraft.world.entity.EntityDimensions {
+        var result = dimensions
+        if (result.width > maxWidth || result.height > maxHeight) {
+            val widthScale = maxWidth / result.width
+            val heightScale = maxHeight / result.height
+            val scale = kotlin.math.min(widthScale, heightScale)
+            result = result.scale(scale)
+        }
+        return result
+    }
 }

@@ -112,9 +112,29 @@ object MorphRenderer {
             fakeEntity.tick()
         }
 
+        // Calculate dynamic scale constraint for dungeons
+        val baseW = pokemon.form.hitbox.width * pokemon.form.baseScale * pokemon.scaleModifier
+        val baseH = pokemon.form.hitbox.height * pokemon.form.baseScale * pokemon.scaleModifier
+        
+        var renderScale = 1.0f
+        if (player.level().dimension().location().namespace == "cdde" && player.level().dimension().location().path == "dungeon") {
+            if (baseW > 3.0f || baseH > 4.0f) {
+                val widthScale = 3.0f / baseW
+                val heightScale = 4.0f / baseH
+                renderScale = kotlin.math.min(widthScale, heightScale)
+            }
+        }
+
+        poseStack.pushPose()
+        if (renderScale != 1.0f) {
+            poseStack.scale(renderScale, renderScale, renderScale)
+        }
+
         // Render the fake entity
         val dispatcher = mc.entityRenderDispatcher
         dispatcher.render(renderEntity, 0.0, 0.0, 0.0, entityYaw, partialTicks, poseStack, buffer, packedLight)
+        
+        poseStack.popPose()
 
         return true
     }

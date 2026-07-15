@@ -23,6 +23,12 @@ public abstract class PlayerMixin {
             // Use the pokemon's form hitbox, scaled by its base scale and individual scale modifier
             float scale = activeMon.getForm().getBaseScale() * activeMon.getScaleModifier();
             EntityDimensions pokemonDimensions = activeMon.getForm().getHitbox().scale(scale);
+            
+            // Constrain if in dungeon
+            if (self.level().dimension().location().getNamespace().equals("cdde") && self.level().dimension().location().getPath().equals("dungeon")) {
+                pokemonDimensions = net.drachi.cdbe.battle.utility.EntityUtil.INSTANCE.constrainDimensions(pokemonDimensions, 3.0f, 4.0f);
+            }
+            
             cir.setReturnValue(pokemonDimensions);
         }
     }
