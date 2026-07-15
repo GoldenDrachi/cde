@@ -425,13 +425,10 @@ object DungeonManager {
 
         // Title text logic
         val isDown = instance.config.stairDirection == StairDirection.DOWN
-        val titleJson = if (instance.currentFloor == 1) {
-            "{\"translate\":\"message.cdde.floor_eg\", \"color\":\"yellow\"}"
-        } else if (isDown) {
-            "{\"translate\":\"message.cdde.floor_down\", \"with\":[\"${instance.currentFloor - 1}\"], \"color\":\"yellow\"}"
-        } else {
-            "{\"translate\":\"message.cdde.floor_up\", \"with\":[\"${instance.currentFloor - 1}\"], \"color\":\"yellow\"}"
-        }
+        val transKey = if (isDown) "message.cdde.floor_down" else "message.cdde.floor_up"
+        val subtitleJson = "{\"translate\":\"$transKey\", \"with\":[\"${instance.currentFloor}\"], \"color\":\"yellow\"}"
+        val dungeonName = instance.config.id.split("_").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
+        val titleJson = "{\"text\":\"$dungeonName\", \"color\":\"gold\"}"
 
         // Array of offsets to prevent entities from clipping into each other
         val spawnOffsets = arrayOf(
@@ -469,6 +466,10 @@ object DungeonManager {
             }
 
             // Show Floor Title
+            member.server.commands.performPrefixedCommand(
+                member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                "title @s subtitle $subtitleJson"
+            )
             member.server.commands.performPrefixedCommand(
                 member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
                 "title @s title $titleJson"
@@ -627,9 +628,17 @@ object DungeonManager {
                 }
             }
             
+            val isDown = instance.config.stairDirection == StairDirection.DOWN
+            val transKey = if (isDown) "message.cdde.floor_down" else "message.cdde.floor_up"
+            val dungeonName = instance.config.id.split("_").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
+            
             member.server.commands.performPrefixedCommand(
                 member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
-                "title @s title {\"translate\":\"message.cdde.floor_eg\", \"color\":\"yellow\"}"
+                "title @s subtitle {\"translate\":\"$transKey\", \"with\":[\"1\"], \"color\":\"yellow\"}"
+            )
+            member.server.commands.performPrefixedCommand(
+                member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                "title @s title {\"text\":\"$dungeonName\", \"color\":\"gold\"}"
             )
         }
     }
