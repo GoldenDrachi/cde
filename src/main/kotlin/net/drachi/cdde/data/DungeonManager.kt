@@ -69,6 +69,24 @@ object DungeonManager {
         minionSpawns.clear()
         endStairSpawns.clear()
     }
+
+    fun getBrokenDungeons(): List<String> {
+        return net.drachi.cdde.database.DatabaseManager.getBrokenDungeons(ConfigManager.globalConfig.serverId)
+    }
+
+    fun getAllDungeons(): List<String> {
+        return net.drachi.cdde.database.DatabaseManager.getAllDungeons(ConfigManager.globalConfig.serverId)
+    }
+    
+    fun performCleanup(uuids: List<String>): Int {
+        var count = 0
+        for (id in uuids) {
+            net.drachi.cdde.database.DatabaseManager.deleteActiveDungeon(java.util.UUID.fromString(id))
+            activeDungeons.remove(java.util.UUID.fromString(id))
+            count++
+        }
+        return count
+    }
     
     val configs = mutableMapOf<String, DungeonConfig>()
 

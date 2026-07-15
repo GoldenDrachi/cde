@@ -59,5 +59,18 @@
   "gui.cdde.config.select_block_for": "Select Block for %s",
   "gui.cdde.result.title": "The Last Outing",
   "gui.cdde.result.place": "Place: %s",
-  "gui.cdde.result.close": "Close"
+  "gui.cdde.result.close": "Close",
+  "command.cdde.help.title": "--- CDDE Commands ---",
+  "command.cdde.help.help": "/cdde help - Show this help menu",
+  "command.cdde.help.portal": "/cdde portal <config_id> - Give yourself a portal for a dungeon",
+  "command.cdde.help.leave": "/cdde leave - Leave your current dungeon",
+  "command.cdde.help.config_create": "/cdde config create <id> - Create a new dungeon configuration",
+  "command.cdde.help.config_edit": "/cdde config edit <id> - Open the config editor UI",
+  "command.cdde.help.config_export": "/cdde config export <id> - Export a config to a JSON file",
+  "command.cdde.help.config_import": "/cdde config import <id> - Import a config from a JSON file",
+  "command.cdde.help.cleanup_broken": "/cdde cleanup broken - Find and cache broken active dungeons",
+  "command.cdde.help.cleanup_all": "/cdde cleanup all - Cache all active dungeons for wiping",
+  "command.cdde.help.cleanup_list": "/cdde cleanup list [page] - View the cached pending cleanups",
+  "command.cdde.help.cleanup_confirm": "/cdde cleanup confirm - Delete all cached pending cleanups",
+  "command.cdde.help.cleanup_delete": "/cdde cleanup delete <uuid> - Delete a specific pending cleanup"
 }

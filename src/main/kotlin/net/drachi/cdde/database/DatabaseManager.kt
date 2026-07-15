@@ -140,6 +140,43 @@ object DatabaseManager {
         }
     }
 
+    fun getBrokenDungeons(serverId: String): List<String> {
+        val sql = "SELECT instance_id, config_id FROM active_dungeons WHERE server_id = ?"
+        val brokenIds = mutableListOf<String>()
+        
+        getConnection()?.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, serverId)
+                val rs = stmt.executeQuery()
+                while (rs.next()) {
+                    val configId = rs.getString("config_id")
+                    if (!net.drachi.cdde.data.DungeonManager.configs.containsKey(configId)) {
+                        brokenIds.add(rs.getString("instance_id"))
+                    }
+                }
+            }
+        }
+        
+        return brokenIds
+    }
+
+    fun getAllDungeons(serverId: String): List<String> {
+        val sql = "SELECT instance_id FROM active_dungeons WHERE server_id = ?"
+        val allIds = mutableListOf<String>()
+        
+        getConnection()?.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, serverId)
+                val rs = stmt.executeQuery()
+                while (rs.next()) {
+                    allIds.add(rs.getString("instance_id"))
+                }
+            }
+        }
+        
+        return allIds
+    }
+
     fun getMaxOriginZ(): Int {
         val sql = "SELECT MAX(origin_z) as max_z FROM active_dungeons"
         var maxZ = 0

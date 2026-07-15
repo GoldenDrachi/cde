@@ -18,12 +18,8 @@ object DungeonCommand {
     fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
         val root = Commands.literal("cdde").requires { it.hasPermission(2) }
 
-        val generateCmd = Commands.literal("generate")
-            .then(
-                Commands.argument("hazard", StringArgumentType.word())
-                    .executes { context -> executeGenerate(context.source, StringArgumentType.getString(context, "hazard")) }
-            )
-            .executes { context -> executeGenerate(context.source, null) }
+        val helpCmd = Commands.literal("help")
+            .executes { context -> executeHelp(context.source) }
 
         val leaveCmd = Commands.literal("leave")
             .executes { context -> executeLeave(context.source) }
@@ -67,108 +63,153 @@ object DungeonCommand {
                     )
             )
 
-        root.then(generateCmd).then(leaveCmd).then(portalCmd).then(configCmd)
+        val cleanupCmd = Commands.literal("cleanup")
+            .then(
+                Commands.literal("broken")
+                    .executes { context -> executeCleanupBroken(context.source) }
+            )
+            .then(
+                Commands.literal("all")
+                    .executes { context -> executeCleanupAll(context.source) }
+            )
+            .then(
+                Commands.literal("confirm")
+                    .executes { context -> executeCleanupConfirm(context.source) }
+            )
+            .then(
+                Commands.literal("list")
+                    .executes { context -> executeCleanupList(context.source, 1) }
+                    .then(
+                        Commands.argument("page", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
+                            .executes { context -> executeCleanupList(context.source, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "page")) }
+                    )
+            )
+            .then(
+                Commands.literal("delete")
+                    .then(
+                        Commands.argument("uuid", StringArgumentType.word())
+                            .suggests { context, builder -> 
+                                val player = context.source.playerOrException
+                                val pending = pendingCleanups[player.uuid] ?: emptyList()
+                                val active = DungeonManager.activeDungeons.keys.map { it.toString() }
+                                val allSuggestions = (pending + active).distinct()
+                                net.minecraft.commands.SharedSuggestionProvider.suggest(allSuggestions, builder)
+                            }
+                            .executes { context -> executeCleanupDelete(context.source, StringArgumentType.getString(context, "uuid")) }
+                    )
+            )
+
+        root.then(helpCmd).then(leaveCmd).then(portalCmd).then(configCmd).then(cleanupCmd)
         dispatcher.register(root)
     }
 
-    private fun executeGenerate(source: CommandSourceStack, hazardArg: String?): Int {
+    private val pendingCleanups = mutableMapOf<java.util.UUID, List<String>>()
+
+    private fun executeCleanupBroken(source: CommandSourceStack): Int {
         val player = source.playerOrException
-        val server = source.server
-        
-        // Find dimension
-        val dungeonDimKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("cdde", "dungeon"))
-        val dungeonLevel = server.getLevel(dungeonDimKey)
-        
-        if (dungeonLevel == null) {
-            source.sendFailure(Component.translatable("message.cdde.error.no_dimension"))
+        val broken = DungeonManager.getBrokenDungeons()
+        if (broken.isEmpty()) {
+            source.sendSuccess({ Component.literal("No broken dungeons found!") }, false)
+            return 1
+        }
+        pendingCleanups[player.uuid] = broken
+        source.sendSuccess({ Component.literal("Found ${broken.size} broken dungeons. Run '/cdde cleanup confirm' to delete them.") }, false)
+        val limit = if (broken.size > 5) 5 else broken.size
+        source.sendSuccess({ Component.literal("Showing first $limit: ${broken.take(limit).joinToString(", ")}") }, false)
+        return 1
+    }
+
+    private fun executeCleanupAll(source: CommandSourceStack): Int {
+        val player = source.playerOrException
+        val all = DungeonManager.getAllDungeons()
+        if (all.isEmpty()) {
+            source.sendSuccess({ Component.literal("No dungeons found in the database!") }, false)
+            return 1
+        }
+        pendingCleanups[player.uuid] = all
+        source.sendSuccess({ Component.literal("Found ${all.size} total dungeons. Run '/cdde cleanup confirm' to completely wipe them.") }, false)
+        return 1
+    }
+
+    private fun executeCleanupConfirm(source: CommandSourceStack): Int {
+        val player = source.playerOrException
+        val pending = pendingCleanups.remove(player.uuid)
+        if (pending == null || pending.isEmpty()) {
+            source.sendFailure(Component.literal("No pending cleanup tasks. Run '/cdde cleanup broken' first."))
             return 0
         }
-
-        var config = DungeonConfig("test_run")
-        if (hazardArg != null) {
-            val prefix = if (hazardArg.contains(":")) "" else "minecraft:"
-            val fc = config.getFloorConfig(1)
-            fc.hazards = mutableListOf(prefix + hazardArg)
-            config.floorRules = mutableListOf(net.drachi.cdde.data.FloorRule("*", fc))
-        }
-
-        val instance = DungeonManager.allocateInstance(config)
-        source.sendSuccess({ net.minecraft.network.chat.Component.translatable("message.cdde.generating", instance.instanceId.toString()) }, true)
-
-        try {
-            // Generate Floor 1
-            val gen1 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ), config, 1)
-            gen1.generate()
-            val startPosFloor1 = gen1.startPosition ?: net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
-            instance.floorStartPositions[1] = startPosFloor1
-            if (gen1.stairPosition != null) {
-                instance.stairPositions[1] = gen1.stairPosition!!
+        
+        Thread {
+            source.server.execute {
+                source.sendSuccess({ Component.literal("Starting cleanup of ${pending.size} dungeons...") }, true)
             }
-            
-            // Generate Floor 2
-            val gen2 = DungeonGenerator(dungeonLevel, net.minecraft.core.BlockPos(instance.originX + 1000, 64, instance.originZ), config, 2)
-            gen2.generate()
-            val startPosFloor2 = gen2.startPosition ?: net.minecraft.core.BlockPos(instance.originX + 1000, 65, instance.originZ)
-            instance.floorStartPositions[2] = startPosFloor2
-            if (gen2.stairPosition != null) {
-                instance.stairPositions[2] = gen2.stairPosition!!
+            val count = DungeonManager.performCleanup(pending)
+            source.server.execute {
+                source.sendSuccess({ Component.literal("Cleanup complete. Wiped $count dungeons.") }, true)
             }
+        }.start()
+        
+        return 1
+    }
 
-            // Find all party members (fallback to just the player if not in a party)
-            val partyMembers = net.drachi.cdde.api.GroupAPI.getPartyMembers(player.uuid) ?: listOf(player.uuid)
-            val playersToTeleport = partyMembers.mapNotNull { server.playerList.getPlayer(it) }
-
-            // Array of offsets to prevent entities from clipping into each other
-            val spawnOffsets = arrayOf(
-                Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
-                Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
-                Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
-            )
-            var spawnIndex = 0
-
-            playersToTeleport.forEach { member ->
-                // Pre-calculate safe return location while overworld chunk is fully loaded
-                val safeReturn = net.drachi.cdde.data.DungeonManager.getSafeOverworldReturn(source.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)!!, member.blockPosition())
-                instance.returnLocations[member.uuid] = safeReturn
-                net.drachi.cdde.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, safeReturn)
-
-                // Pick a spot for the player
-                val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-                spawnIndex++
-                val pPosRaw = net.minecraft.core.BlockPos(startPosFloor1.x + pOffset.first, startPosFloor1.y, startPosFloor1.z + pOffset.second)
-                val pPos = net.drachi.cdde.data.DungeonManager.findSafeSpawn(dungeonLevel, pPosRaw)
-                
-                // Teleport player (add 0.5 to center in block)
-                member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
-
-                // Teleport out-of-ball party Pokemon
-                val memberParty = com.cobblemon.mod.common.Cobblemon.storage.getParty(member)
-                for (i in 0 until memberParty.size()) {
-                    val pokemon = memberParty.get(i)
-                    if (pokemon != null && pokemon.entity != null) {
-                        val pEntity = pokemon.entity!!
-                        
-                        val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-                        spawnIndex++
-                        val pokePosRaw = net.minecraft.core.BlockPos(startPosFloor1.x + pokeOffset.first, startPosFloor1.y, startPosFloor1.z + pokeOffset.second)
-                        val pokePos = net.drachi.cdde.data.DungeonManager.findSafeSpawn(dungeonLevel, pokePosRaw)
-                        
-                        pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
-                    }
-                }
-
-                // Show initial floor title
-                member.server.commands.performPrefixedCommand(
-                    member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
-                    "title @s title {\"translate\":\"message.cdde.floor_eg\", \"color\":\"yellow\"}"
-                )
-            }
-        } catch (e: Throwable) {
-            CobblemonDungeonDungeonsEngine.logger.error("Dungeon generation failed!", e)
-            source.sendFailure(Component.translatable("message.cdde.error.generation_failed", e.message ?: "Unknown error"))
+    private fun executeCleanupList(source: CommandSourceStack, page: Int): Int {
+        val player = source.playerOrException
+        val pending = pendingCleanups[player.uuid]
+        if (pending == null || pending.isEmpty()) {
+            source.sendFailure(Component.literal("No pending cleanup tasks. Run '/cdde cleanup broken' first."))
             return 0
         }
+        
+        val pageSize = 10
+        val totalPages = (pending.size + pageSize - 1) / pageSize
+        if (page > totalPages) {
+            source.sendFailure(Component.literal("Page $page does not exist (Max: $totalPages)."))
+            return 0
+        }
+        
+        source.sendSuccess({ Component.literal("--- Pending Cleanup (Page $page of $totalPages) ---") }, false)
+        val start = (page - 1) * pageSize
+        val end = minOf(start + pageSize, pending.size)
+        
+        for (i in start until end) {
+            source.sendSuccess({ Component.literal("${i + 1}. ${pending[i]}") }, false)
+        }
+        source.sendSuccess({ Component.literal("Use '/cdde cleanup delete <uuid>' to remove a specific one.") }, false)
+        return 1
+    }
 
+    private fun executeCleanupDelete(source: CommandSourceStack, uuidStr: String): Int {
+        val player = source.playerOrException
+        val uuid = try {
+            java.util.UUID.fromString(uuidStr)
+        } catch (e: Exception) {
+            source.sendFailure(Component.literal("Invalid UUID format."))
+            return 0
+        }
+        
+        DungeonManager.performCleanup(listOf(uuid.toString()))
+        source.sendSuccess({ Component.literal("Successfully wiped dungeon $uuid.") }, true)
+        
+        pendingCleanups[player.uuid]?.let { list ->
+            pendingCleanups[player.uuid] = list.filter { it != uuid.toString() }
+        }
+        return 1
+    }
+
+    private fun executeHelp(source: CommandSourceStack): Int {
+        source.sendSuccess({ Component.translatable("command.cdde.help.title").withStyle(net.minecraft.ChatFormatting.AQUA) }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.help") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.portal") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.leave") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.config_create") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.config_edit") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.config_export") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.config_import") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.cleanup_broken") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.cleanup_all") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.cleanup_list") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.cleanup_confirm") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.cleanup_delete") }, false)
         return 1
     }
 
