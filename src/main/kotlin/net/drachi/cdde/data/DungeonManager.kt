@@ -481,8 +481,8 @@ object DungeonManager {
         )
         var spawnIndex = 0
 
-        // Freeze entities for 1.5s
-        freezeDungeon(instance.instanceId, 30)
+        // Freeze entities for configured ticks
+        freezeDungeon(instance.instanceId, ConfigManager.globalConfig.floorStartFreezeTicks)
 
         // Teleport everyone and their Pokemon BEFORE wiping the old chunks
         playersToTeleport.forEach { member ->
@@ -644,8 +644,8 @@ object DungeonManager {
         )
         var spawnIndex = 0
 
-        // Freeze entities for 1.5s
-        freezeDungeon(instance.instanceId, 30)
+        // Freeze entities for configured ticks
+        freezeDungeon(instance.instanceId, ConfigManager.globalConfig.floorStartFreezeTicks)
 
         playersToTeleport.forEach { member ->
             member.portalCooldown = 100

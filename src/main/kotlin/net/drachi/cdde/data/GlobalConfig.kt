@@ -27,5 +27,9 @@ data class GlobalConfig(
     val _comment_serverId: String = "Unique identifier for this server instance (used for cross-server database tracking).",
     val serverId: String = "server-1",
     val _comment_abandonTimeoutMinutes: String = "How long (in minutes) a dungeon remains active after all players leave or disconnect.",
-    val abandonTimeoutMinutes: Int = 15
+    val abandonTimeoutMinutes: Int = 15,
+    
+    // --- Combat & Gameplay Settings ---
+    val _comment_floorStartFreezeTicks: String = "How long (in ticks, 20 ticks = 1s) to freeze all entities when a player enters a new floor.",
+    val floorStartFreezeTicks: Int = 30
 )
