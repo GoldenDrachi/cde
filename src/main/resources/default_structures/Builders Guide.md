@@ -40,6 +40,8 @@ Rooms	[theme]_room_*.nbt	Dimensions must be a multiple of 7x7 cells. Can contain
 Hallways	[theme]_hallway_*.nbt	Hallways are auto-categorized by jigsaw count (2 = Straight/Corner, 3 = T-junction, 4 = Cross).
 Ends	[theme]_end_*.nbt	Used to cap dead-end corridors and unused room exits. Must have exactly 1 jigsaw.
 
+Please make sure that themes don't contain the words "room", "hallway" or "end" or the engine might be confused.
+
 7. Palette Custom Blocks & Themes
 
 A. Dynamic Palette Swap (Optional)
@@ -50,10 +52,15 @@ cdde:palette_b $\rightarrow$ Secondary Accent block
 cdde:palette_c $\rightarrow$ Trim/Decorative block
 cdde:palette_d $\rightarrow$ Pillar/Special block
 cdde:hazard $\rightarrow$ Hazard block (Water, Lava, or Void depending on layout/theme)
-cdde:treasure_door $\rightarrow$ Treasure Door block (Unlockable with a Treasure Key)
 
 B. Standard Blocks (Default)
 The use of palette blocks is entirely optional. You can build your templates with any standard vanilla Minecraft blocks (such as Stone Bricks, Spruce Wood, or Glass). Any vanilla blocks in the template will not be replaced and will render in the world exactly as they were built. This allows you to mix static themed areas with dynamic theme swapping.
+
+C. Door Blocks
+CDDE implements custom door blocks for builders to use.
+
+cdde:treasure_door $\rightarrow$ Treasure Door block (Unlockable with a Treasure Key)
+cdde:boss_door $\rightarrow$ Boss Door block (Opens when approaching, only unlocks once all enemies on the floor are defeated)
 
 8. Custom Spawn Blocks
 When building dungeon templates, do not place vanilla entities (like chests or mobs) or standard Cobblemon spawners. Instead, place CDDE's custom utility blocks, which the engine replaces with actual gameplay elements at generation time:
@@ -61,6 +68,7 @@ When building dungeon templates, do not place vanilla entities (like chests or m
 Pokemon Spawn Block (cdde:pokemon_spawn):
 Purpose: Marks the physical block position where a wild Pokémon should be spawned.
 Behavior: When the dungeon floor generates, the engine queries the active floor's JSON spawn table, selects a Pokémon, spawns it on top of this block, and replaces this marker block with air.
+
 Item Spawn Block (cdde:item_spawn):
 Purpose: Marks the physical block position where a standard floor ground item should be spawned.
 Behavior: When the dungeon floor generates, the engine queries the active floor's JSON loot table, spawns standard items with a chance at this position, and replaces this marker block.
@@ -77,13 +85,29 @@ Minion Spawn Block (cdde:minion_spawn):
 Purpose: Defines spawn points for Minions alongside the Boss.
 Behavior: Functions similarly to Boss Spawn but pulls from a distinct minion pool. All markers are cleared on generation.
 
+Player Spawn Block (cdde:player_spawn):
+Purpose: Defines where players start when entering the floor.
+Behavior: The generator will prioritize these blocks over random floor spots. If placed, players will be teleported here instead of a random location. Replaced with air upon generation.
+
+End Stair Spawn Block (cdde:end_stair_spawn):
+Purpose: Marks the location where the final exit stairs should appear on the End Floor.
+Behavior: Replaced by actual functional stairs that allow the player to complete the dungeon successfully. If missing, stairs generate randomly.
+
 9. Saving with Structure Blocks
 To export your built rooms and hallways into .nbt templates:
 
-Alignment: Place the Structure Block at the corner of your template. Ensure the bounding box covers exactly the $7 \times 7$ grid bounds of the structure.
+Alignment: Place the Structure Block at the corner of your template. Ensure the bounding box covers exactly the 7x7 grid bounds of the structure.
 Settings:
 Show Bounding Box: Enabled (verify the white outline encompasses the whole build).
 Include Entities: Disabled (vanilla entities are ignored; place custom spawn blocks instead).
 Saving: Save the structure, which exports it as an .nbt file under your world's generated/cdde/structures/ folder.
 Mod Setup: Copy the exported .nbt file into the mod's configuration directory: config/cdde/structures/ using the correct file prefix (e.g. cave_room_hub.nbt).
 
+10. Boss Rooms & Treasure Rooms (End floors)
+Boss floors and Treasure floors are generated using the exact same room-placement algorithm as regular floors. To ensure the generator picks the correct, unique room for a boss or treasure floor:
+- Unique Theme: You must create a dedicated "theme" specifically for these floors (e.g., `boss_arena_1` or `treasure_vault`). 
+- File Naming: Name your boss room template `boss_arena_1_room_01.nbt`. 
+- Config Selection: In the Dungeon Editor UI, when configuring the Boss Floor or End Floor, select your dedicated theme (e.g., `boss_arena_1`) for that floor. The generator will then exclusively use rooms with that theme, effectively ensuring your custom Boss/Treasure room is placed.
+- Components: Boss rooms should typically include `cdde:boss_spawn` and `cdde:minion_spawn` blocks. Treasure rooms should include `cdde:treasure_spawn` blocks and the `cdde:end_stair_spawn` block for the final exit. 
+
+Remember: If a Boss or Treasure theme doesn't have an associated hallway template (e.g., `boss_arena_1_hallway...`), the generator will fail if it tries to spawn hallways. Keep the room count min/max settings tight (e.g. Min 1, Max 1) for these special floors to prevent the algorithm from attempting to place connecting hallways!

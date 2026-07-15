@@ -136,27 +136,35 @@ object DungeonManager {
 
         structuresDir.listFiles { file -> file.extension == "nbt" }?.forEach { file ->
             val name = file.nameWithoutExtension
-            val parts = name.split("_")
-            if (parts.size >= 3) {
-                val theme = parts[0]
+            
+            val theme = when {
+                name.contains("_room_") -> name.substringBefore("_room_")
+                name.contains("_hallway_") -> name.substringBefore("_hallway_")
+                name.contains("_end_") -> name.substringBefore("_end_")
+                name.contains("_stairs_") -> name.substringBefore("_stairs_")
+                name.contains("_stair_") -> name.substringBefore("_stair_")
+                else -> null
+            }
+
+            if (theme != null) {
                 val resourceId = ResourceLocation.fromNamespaceAndPath("cdde", name)
 
                 // Load the .nbt file directly from disk into a StructureTemplate
                 val template = loadNbtFile(file)
-                if (template == null) return@forEach
+                if (template != null) {
+                    loadedTemplates[resourceId] = template
 
-                loadedTemplates[resourceId] = template
-
-                // Categorize by naming convention: [theme]_room_*, [theme]_hallway_*, [theme]_end_*, [theme]_stairs_*
-                when {
-                    name.contains("_room_") ->
-                        availableRooms.getOrPut(theme) { mutableListOf() }.add(resourceId)
-                    name.contains("_hallway_") ->
-                        availableHallways.getOrPut(theme) { mutableListOf() }.add(resourceId)
-                    name.contains("_end_") ->
-                        availableEnds.getOrPut(theme) { mutableListOf() }.add(resourceId)
-                    name.contains("_stairs_") || name.contains("_stair_") ->
-                        availableStairs.getOrPut(theme) { mutableListOf() }.add(resourceId)
+                    // Categorize by naming convention: [theme]_room_*, [theme]_hallway_*, [theme]_end_*, [theme]_stairs_*
+                    when {
+                        name.contains("_room_") ->
+                            availableRooms.getOrPut(theme) { mutableListOf() }.add(resourceId)
+                        name.contains("_hallway_") ->
+                            availableHallways.getOrPut(theme) { mutableListOf() }.add(resourceId)
+                        name.contains("_end_") ->
+                            availableEnds.getOrPut(theme) { mutableListOf() }.add(resourceId)
+                        name.contains("_stairs_") || name.contains("_stair_") ->
+                            availableStairs.getOrPut(theme) { mutableListOf() }.add(resourceId)
+                    }
                 }
             }
         }
