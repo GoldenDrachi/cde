@@ -48,9 +48,9 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
     }
 
     private fun rebuildContent() {
-        // if (this::rootScroll.isInitialized) {
-        //     lastScrollProgress = rootScroll.scrollAmount()
-        // }
+        if (this::rootScroll.isInitialized) {
+            lastScrollProgress = getScrollProgress()
+        }
         contentFlow.clearChildren()
 
         // 1. Header & Global Properties
@@ -439,11 +439,26 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
         contentFlow.child(btnRow)
 
         if (this::rootScroll.isInitialized) {
-            // try {
-            //    rootScroll.scrollTo(lastScrollProgress)
-            // } catch (e: Exception) {
-                // If scrollTo is not the correct method, fallback
-            // }
+            try {
+               rootScroll.scrollTo(lastScrollProgress)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    private fun getScrollProgress(): Double {
+        return try {
+            val offsetField = io.wispforest.owo.ui.container.ScrollContainer::class.java.getDeclaredField("scrollOffset")
+            offsetField.isAccessible = true
+            val maxScrollField = io.wispforest.owo.ui.container.ScrollContainer::class.java.getDeclaredField("maxScroll")
+            maxScrollField.isAccessible = true
+            
+            val offset = offsetField.getDouble(rootScroll)
+            val max = maxScrollField.getInt(rootScroll).toDouble()
+            if (max > 0) offset / max else 0.0
+        } catch (e: Exception) {
+            0.0
         }
     }
 
