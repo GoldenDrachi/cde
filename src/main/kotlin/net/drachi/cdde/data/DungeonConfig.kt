@@ -60,7 +60,6 @@ data class FloorRule(
 @Serializable
 data class DungeonConfig(
     val id: String,
-    var portalColor: Int = 0x800080,
     var amountOfFloors: Int = 5,
     var endFloorType: EndFloorType = EndFloorType.NORMAL,
     

@@ -25,10 +25,43 @@ object DungeonCommand {
             .executes { context -> executeLeave(context.source) }
 
         val portalCmd = Commands.literal("portal")
+            .executes { context -> executePortal(context.source, null, null) }
             .then(
                 Commands.argument("config_id", StringArgumentType.word())
-                    .suggests { _, builder -> net.minecraft.commands.SharedSuggestionProvider.suggest(DungeonManager.configs.keys, builder) }
-                    .executes { context -> executePortal(context.source, StringArgumentType.getString(context, "config_id")) }
+                    .suggests { _, builder -> net.minecraft.commands.SharedSuggestionProvider.suggest(DungeonManager.configs.keys + "ui", builder) }
+                    .executes { context -> executePortal(context.source, StringArgumentType.getString(context, "config_id"), null) }
+                    .then(
+                        Commands.argument("color_hex", StringArgumentType.word())
+                            .executes { context -> executePortal(context.source, StringArgumentType.getString(context, "config_id"), StringArgumentType.getString(context, "color_hex")) }
+                    )
+            )
+
+        val joinCmd = Commands.literal("join")
+            .executes { context -> executeJoin(context.source, null) }
+            .then(
+                Commands.argument("config_id", StringArgumentType.word())
+                    .suggests { context, builder -> 
+                        val player = context.source.playerOrException
+                        net.minecraft.commands.SharedSuggestionProvider.suggest(net.drachi.cdde.database.DatabaseManager.getUnlockedDungeons(player.uuid), builder)
+                    }
+                    .executes { context -> executeJoin(context.source, StringArgumentType.getString(context, "config_id")) }
+            )
+
+        val unlockCmd = Commands.literal("unlock")
+            .requires { it.hasPermission(2) }
+            .then(
+                Commands.argument("target", net.minecraft.commands.arguments.EntityArgument.player())
+                    .then(
+                        Commands.argument("config_id", StringArgumentType.word())
+                            .suggests { _, builder -> net.minecraft.commands.SharedSuggestionProvider.suggest(DungeonManager.configs.keys, builder) }
+                            .executes { context -> 
+                                executeUnlock(
+                                    context.source,
+                                    net.minecraft.commands.arguments.EntityArgument.getPlayer(context, "target"),
+                                    StringArgumentType.getString(context, "config_id")
+                                ) 
+                            }
+                    )
             )
 
         val configCmd = Commands.literal("config")
@@ -99,7 +132,7 @@ object DungeonCommand {
                     )
             )
 
-        root.then(helpCmd).then(leaveCmd).then(portalCmd).then(configCmd).then(cleanupCmd)
+        root.then(helpCmd).then(leaveCmd).then(portalCmd).then(configCmd).then(cleanupCmd).then(joinCmd).then(unlockCmd)
         dispatcher.register(root)
     }
 
@@ -200,6 +233,8 @@ object DungeonCommand {
         source.sendSuccess({ Component.translatable("command.cdde.help.title").withStyle(net.minecraft.ChatFormatting.AQUA) }, false)
         source.sendSuccess({ Component.translatable("command.cdde.help.help") }, false)
         source.sendSuccess({ Component.translatable("command.cdde.help.portal") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.join") }, false)
+        source.sendSuccess({ Component.translatable("command.cdde.help.unlock") }, false)
         source.sendSuccess({ Component.translatable("command.cdde.help.leave") }, false)
         source.sendSuccess({ Component.translatable("command.cdde.help.config_create") }, false)
         source.sendSuccess({ Component.translatable("command.cdde.help.config_edit") }, false)
@@ -265,29 +300,84 @@ object DungeonCommand {
         return 1
     }
 
-    private fun executePortal(source: CommandSourceStack, configId: String): Int {
+    private fun executePortal(source: CommandSourceStack, configId: String?, colorHexStr: String?): Int {
         val player = source.playerOrException
         
-        if (!DungeonManager.configs.containsKey(configId)) {
-            source.sendFailure(Component.literal("Config ID '$configId' not found."))
+        val isGeneric = configId == null || configId.lowercase() == "ui"
+        
+        if (!isGeneric && configId != null && !DungeonManager.configs.containsKey(configId)) {
+            source.sendFailure(Component.literal("Config ID '$configId' not found. Use 'ui' for a generic portal."))
             return 0
+        }
+
+        var parsedColor: Int? = null
+        if (colorHexStr != null) {
+            val cleanHex = colorHexStr.removePrefix("#").removePrefix("0x")
+            try {
+                parsedColor = cleanHex.toInt(16)
+            } catch (e: Exception) {
+                source.sendFailure(Component.literal("Invalid color hex format. Try something like FF0000."))
+                return 0
+            }
         }
 
         // Give the player a portal block that is pre-configured
         val itemStack = net.minecraft.world.item.ItemStack(net.drachi.cdde.registry.ModBlocks.DUNGEON_PORTAL)
         
         net.minecraft.world.item.component.CustomData.update(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA, itemStack) { tag ->
-            tag.putString("ConfigId", configId)
+            if (!isGeneric && configId != null) {
+                tag.putString("ConfigId", configId)
+            } else {
+                tag.putString("ConfigId", "")
+            }
+            if (parsedColor != null) {
+                tag.putInt("ColorHex", parsedColor)
+            }
             tag.putString("id", "cdde:dungeon_portal") // Ensure block entity ID is present
         }
         
-        itemStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Dungeon Portal ($configId)").withStyle(net.minecraft.ChatFormatting.AQUA))
+        if (!isGeneric) {
+            itemStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Dungeon Portal ($configId)").withStyle(net.minecraft.ChatFormatting.AQUA))
+        } else {
+            itemStack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Dungeon Portal (Generic UI)").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE))
+        }
         
         if (!player.inventory.add(itemStack)) {
             player.drop(itemStack, false)
         }
         
-        source.sendSuccess({ Component.literal("Gave 1 Dungeon Portal for config '$configId'") }, true)
+        source.sendSuccess({ Component.literal(if (!isGeneric) "Gave 1 Dungeon Portal for config '$configId'" else "Gave 1 Generic Dungeon Portal") }, true)
+        return 1
+    }
+
+    private fun executeJoin(source: CommandSourceStack, configId: String?): Int {
+        val player = source.playerOrException
+        if (configId == null) {
+            // Open UI
+            val unlocked = net.drachi.cdde.database.DatabaseManager.getUnlockedDungeons(player.uuid)
+            net.drachi.cdde.network.NetworkHandler.CHANNEL.serverHandle(player).send(
+                net.drachi.cdde.network.OpenDungeonJoinUIPayload(unlocked)
+            )
+            return 1
+        } else {
+            // Instantly join if they have it unlocked
+            if (!net.drachi.cdde.database.DatabaseManager.hasUnlockedDungeon(player.uuid, configId)) {
+                source.sendFailure(Component.literal("You have not unlocked the dungeon '$configId'."))
+                return 0
+            }
+            DungeonManager.joinDungeon(player, configId, bypassUnlockCheck = false)
+            return 1
+        }
+    }
+
+    private fun executeUnlock(source: CommandSourceStack, target: ServerPlayer, configId: String): Int {
+        if (!DungeonManager.configs.containsKey(configId)) {
+            source.sendFailure(Component.literal("Config ID '$configId' not found."))
+            return 0
+        }
+        net.drachi.cdde.database.DatabaseManager.unlockDungeon(target.uuid, configId)
+        source.sendSuccess({ Component.literal("Unlocked dungeon '$configId' for player ${target.scoreboardName}.") }, true)
+        target.sendSystemMessage(Component.literal("§aYou have unlocked the dungeon: $configId"))
         return 1
     }
 

@@ -82,12 +82,21 @@ object DatabaseManager {
             )
         """.trimIndent()
 
+        val sqlUnlocks = """
+            CREATE TABLE IF NOT EXISTS player_unlocked_dungeons (
+                player_uuid VARCHAR(36),
+                config_id VARCHAR(100),
+                PRIMARY KEY (player_uuid, config_id)
+            )
+        """.trimIndent()
+
         getConnection()?.use { conn ->
             conn.createStatement().use { stmt ->
                 stmt.execute(sqlDungeons)
                 stmt.execute(sqlPlayers)
                 stmt.execute(sqlEvicted)
                 stmt.execute(sqlConfigs)
+                stmt.execute(sqlUnlocks)
             }
         }
     }
@@ -389,5 +398,59 @@ object DatabaseManager {
                 stmt.executeUpdate()
             }
         }
+    }
+
+    fun unlockDungeon(playerUuid: UUID, configId: String) {
+        val sql = """
+            INSERT INTO player_unlocked_dungeons (player_uuid, config_id)
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE config_id = config_id
+        """.trimIndent()
+
+        val sqliteSql = """
+            INSERT INTO player_unlocked_dungeons (player_uuid, config_id)
+            VALUES (?, ?)
+            ON CONFLICT(player_uuid, config_id) DO NOTHING
+        """.trimIndent()
+
+        getConnection()?.use { conn ->
+            val query = if (conn.metaData.databaseProductName.contains("SQLite", true)) sqliteSql else sql
+            conn.prepareStatement(query).use { stmt ->
+                stmt.setString(1, playerUuid.toString())
+                stmt.setString(2, configId)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    fun getUnlockedDungeons(playerUuid: UUID): List<String> {
+        val sql = "SELECT config_id FROM player_unlocked_dungeons WHERE player_uuid = ?"
+        val list = mutableListOf<String>()
+        getConnection()?.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, playerUuid.toString())
+                val rs = stmt.executeQuery()
+                while (rs.next()) {
+                    list.add(rs.getString("config_id"))
+                }
+            }
+        }
+        return list
+    }
+
+    fun hasUnlockedDungeon(playerUuid: UUID, configId: String): Boolean {
+        val sql = "SELECT 1 FROM player_unlocked_dungeons WHERE player_uuid = ? AND config_id = ?"
+        var hasUnlock = false
+        getConnection()?.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, playerUuid.toString())
+                stmt.setString(2, configId)
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    hasUnlock = true
+                }
+            }
+        }
+        return hasUnlock
     }
 }

@@ -10,8 +10,8 @@ import net.minecraft.world.level.block.state.BlockState
 import net.drachi.cdde.registry.ModBlockEntities
 
 class DungeonPortalBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ModBlockEntities.DUNGEON_PORTAL, pos, state) {
-    var configId: String = "default"
-    var colorHex: Int = 0x55FF55 // Default green color
+    var configId: String = ""
+    var colorHex: Int = 0x800080
 
     override fun saveAdditional(tag: CompoundTag, registries: net.minecraft.core.HolderLookup.Provider) {
         super.saveAdditional(tag, registries)

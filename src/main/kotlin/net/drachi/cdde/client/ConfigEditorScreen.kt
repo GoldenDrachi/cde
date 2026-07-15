@@ -81,14 +81,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
         stairRow.child(stairDirBtn.margins(Insets.right(10)))
         contentFlow.child(stairRow.margins(Insets.bottom(10)))
 
-        // Color Picker for Portal
-        contentFlow.child(Components.label(Component.translatable("gui.cdde.config.portal_color")).margins(Insets.bottom(5)))
-        val colorPicker = ColorPickerComponent().showAlpha(false)
-        val initialColor = Color.ofRgb(config.portalColor)
-        colorPicker.selectedColor(initialColor)
-        colorPicker.sizing(Sizing.fixed(200), Sizing.fixed(100))
-        colorPicker.onChanged().subscribe { c -> config.portalColor = c.rgb() }
-        contentFlow.child(colorPicker.margins(Insets.bottom(15)))
+        // Color picker removed
 
         // 1.5 End Floor Config
         if (config.endFloorType != net.drachi.cdde.data.EndFloorType.NORMAL) {

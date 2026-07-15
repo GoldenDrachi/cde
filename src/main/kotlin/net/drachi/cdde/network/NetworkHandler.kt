@@ -11,6 +11,12 @@ data class SyncSelectedSlotPayload(val slotIndex: Int)
 @JvmRecord
 data class DungeonResultPayload(val dungeonName: String, val partyName: String, val messageKey: String)
 
+@JvmRecord
+data class OpenDungeonJoinUIPayload(val unlockedDungeons: List<String>)
+
+@JvmRecord
+data class JoinDungeonRequestPayload(val dungeonId: String)
+
 object NetworkHandler {
     val CHANNEL: OwoNetChannel = OwoNetChannel.create(ResourceLocation.fromNamespaceAndPath("cdde", "main"))
 
@@ -39,6 +45,19 @@ object NetworkHandler {
                 } catch (e: Exception) {
                     player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Failed to save configuration. Invalid JSON."))
                 }
+            }
+        }
+
+        CHANNEL.registerClientbound(OpenDungeonJoinUIPayload::class.java) { payload, context ->
+            net.minecraft.client.Minecraft.getInstance().execute {
+                net.minecraft.client.Minecraft.getInstance().setScreen(net.drachi.cdde.client.DungeonJoinScreen(payload.unlockedDungeons))
+            }
+        }
+
+        CHANNEL.registerServerbound(JoinDungeonRequestPayload::class.java) { payload, context ->
+            val player = context.player() as? ServerPlayer ?: return@registerServerbound
+            player.server.execute {
+                net.drachi.cdde.data.DungeonManager.joinDungeon(player, payload.dungeonId, bypassUnlockCheck = false)
             }
         }
     }

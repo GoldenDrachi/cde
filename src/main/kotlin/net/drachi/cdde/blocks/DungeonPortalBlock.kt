@@ -47,88 +47,18 @@ class DungeonPortalBlock(properties: Properties) : Block(properties), EntityBloc
             val be = level.getBlockEntity(pos) as? DungeonPortalBlockEntity ?: return
             val configId = be.configId
             
-            val config = DungeonManager.configs[configId]
-            if (config == null) {
-                entity.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cThis dungeon portal is linked to an invalid or missing config: $configId"))
+            if (configId.isBlank()) {
+                // Generic portal -> open UI
+                val unlocked = net.drachi.cdde.database.DatabaseManager.getUnlockedDungeons(entity.uuid)
+                net.drachi.cdde.network.NetworkHandler.CHANNEL.serverHandle(entity).send(
+                    net.drachi.cdde.network.OpenDungeonJoinUIPayload(unlocked)
+                )
+                // Short cooldown so it doesn't spam the UI open packet
                 entity.portalCooldown = 20
                 return
-            }
-
-            // Group API check
-            val partyMembers = net.drachi.cdde.api.GroupAPI.getPartyMembers(entity.uuid)
-            if (partyMembers != null) {
-                val leader = partyMembers.first() // first is always the leader
-                if (entity.uuid != leader) {
-                    entity.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cOnly the party leader can initiate a dungeon run."))
-                    entity.portalCooldown = 40
-                    return
-                }
-            }
-
-            // Create instance
-            val instance = DungeonManager.allocateInstance(config)
-            
-            val dungeonLevel = level.server!!.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cdde", "dungeon")))!!
-
-            // Generate floor 1
-            val generator = DungeonGenerator(
-                dungeonLevel,
-                net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ),
-                instance.config,
-                1
-            )
-            generator.generate()
-            
-            val startPos = generator.startPosition ?: BlockPos(instance.originX, 65, instance.originZ)
-            instance.floorStartPositions[1] = startPos
-            if (generator.stairPosition != null) {
-                instance.stairPositions[1] = generator.stairPosition!!
-            }
-
-            val playersToTeleport = partyMembers?.mapNotNull { entity.server.playerList.getPlayer(it) } ?: listOf(entity)
-            
-            // Array of offsets to prevent entities from clipping into each other
-            val spawnOffsets = arrayOf(
-                Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
-                Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
-                Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
-            )
-            var spawnIndex = 0
-
-            playersToTeleport.forEach { member ->
-                // Set their cooldown to prevent re-triggering upon entry
-                member.portalCooldown = 100
-                
-                // Pre-calculate safe return location while overworld chunk is fully loaded
-                val safeReturn = DungeonManager.getSafeOverworldReturn(level as net.minecraft.server.level.ServerLevel, member.blockPosition())
-                instance.returnLocations[member.uuid] = safeReturn
-                net.drachi.cdde.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, safeReturn)
-                
-                val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-                spawnIndex++
-                val pPosRaw = startPos.offset(pOffset.first, 0, pOffset.second)
-                val pPos = DungeonManager.findSafeSpawn(dungeonLevel, pPosRaw)
-                
-                member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
-
-                // Teleport out-of-ball party Pokemon
-                val memberParty = com.cobblemon.mod.common.Cobblemon.storage.getParty(member)
-                for (i in 0 until memberParty.size()) {
-                    val pokemon = memberParty.get(i)
-                    if (pokemon != null && pokemon.entity != null) {
-                        val pEntity = pokemon.entity!!
-                        val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-                        spawnIndex++
-                        val pokePosRaw = startPos.offset(pokeOffset.first, 0, pokeOffset.second)
-                        val pokePos = DungeonManager.findSafeSpawn(dungeonLevel, pokePosRaw)
-                        pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
-                    }
-                }
-                
-                member.server.commands.performPrefixedCommand(
-                    member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
-                    "title @s title {\"translate\":\"message.cdde.floor_eg\", \"color\":\"yellow\"}"
-                )
+            } else {
+                // Specific portal -> instant join & bypass unlock check
+                net.drachi.cdde.data.DungeonManager.joinDungeon(entity, configId, bypassUnlockCheck = true)
             }
         }
     }

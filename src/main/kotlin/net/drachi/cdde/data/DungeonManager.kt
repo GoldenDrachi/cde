@@ -541,4 +541,96 @@ object DungeonManager {
         }
         return returnPos
     }
+
+    fun joinDungeon(entity: net.minecraft.server.level.ServerPlayer, configId: String, bypassUnlockCheck: Boolean = false) {
+        val config = configs[configId]
+        if (config == null) {
+            entity.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cThis dungeon is linked to an invalid or missing config: $configId"))
+            return
+        }
+
+        val partyMembers = net.drachi.cdde.api.GroupAPI.getPartyMembers(entity.uuid)
+        val playersToTeleport = partyMembers?.mapNotNull { entity.server.playerList.getPlayer(it) } ?: listOf(entity)
+
+        if (partyMembers != null) {
+            val leader = partyMembers.first() // first is always the leader
+            if (entity.uuid != leader) {
+                entity.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cOnly the party leader can initiate a dungeon run."))
+                return
+            }
+        }
+
+        if (!bypassUnlockCheck) {
+            for (member in playersToTeleport) {
+                if (!net.drachi.cdde.database.DatabaseManager.hasUnlockedDungeon(member.uuid, configId)) {
+                    entity.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cCannot start: Party member ${member.scoreboardName} has not unlocked this dungeon."))
+                    return
+                }
+            }
+        }
+
+        // Create instance
+        val instance = allocateInstance(config)
+        
+        val dungeonLevel = entity.server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cdde", "dungeon")))!!
+
+        // Generate floor 1
+        val generator = net.drachi.cdde.generation.DungeonGenerator(
+            dungeonLevel,
+            net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ),
+            instance.config,
+            1
+        )
+        generator.generate()
+        
+        val startPos = generator.startPosition ?: net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
+        instance.floorStartPositions[1] = startPos
+        if (generator.stairPosition != null) {
+            instance.stairPositions[1] = generator.stairPosition!!
+        }
+
+        // Array of offsets to prevent entities from clipping into each other
+        val spawnOffsets = arrayOf(
+            Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
+            Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
+            Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
+        )
+        var spawnIndex = 0
+
+        playersToTeleport.forEach { member ->
+            member.portalCooldown = 100
+            
+            val safeReturn = getSafeOverworldReturn(entity.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)!!, member.blockPosition())
+            instance.returnLocations[member.uuid] = safeReturn
+            net.drachi.cdde.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, safeReturn)
+            
+            // Unlock it for them!
+            net.drachi.cdde.database.DatabaseManager.unlockDungeon(member.uuid, configId)
+            
+            val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
+            spawnIndex++
+            val pPosRaw = startPos.offset(pOffset.first, 0, pOffset.second)
+            val pPos = findSafeSpawn(dungeonLevel, pPosRaw)
+            
+            member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
+
+            val memberParty = com.cobblemon.mod.common.Cobblemon.storage.getParty(member)
+            for (i in 0 until memberParty.size()) {
+                val pokemon = memberParty.get(i)
+                if (pokemon != null && pokemon.entity != null) {
+                    val pEntity = pokemon.entity!!
+                    val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
+                    spawnIndex++
+                    val pokePosRaw = startPos.offset(pokeOffset.first, 0, pokeOffset.second)
+                    val pokePos = findSafeSpawn(dungeonLevel, pokePosRaw)
+                    pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
+                }
+            }
+            
+            member.server.commands.performPrefixedCommand(
+                member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                "title @s title {\"translate\":\"message.cdde.floor_eg\", \"color\":\"yellow\"}"
+            )
+        }
+    }
 }
