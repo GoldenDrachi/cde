@@ -120,7 +120,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 row.margins(Insets.bottom(2))
                 
                 val itemBtn = Components.button(Component.literal(spawn.item.split(":").lastOrNull()?.take(12) ?: spawn.item.take(12))) {
-                    val allItems = net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().toList().map { net.drachi.cdde.client.ResourceSelectorScreen.ResourceEntry(it.toString(), net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(it))) }
+                    val allItems = net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().toList().sortedBy { it.toString() }.map { net.drachi.cdde.client.ResourceSelectorScreen.ResourceEntry(it.toString(), net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(it))) }
                     openResourceSelector(Component.translatable("gui.cdde.config.select_item"), allItems) {
                         spawn.item = it
                         rebuildContent()
@@ -189,7 +189,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                         if (button == 0) {
                             val entries = mutableListOf<net.drachi.cdde.client.ResourceSelectorScreen.ResourceEntry>()
                             try {
-                                val allSpecies = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.implemented
+                                val allSpecies = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.implemented.sortedBy { it.nationalPokedexNumber }
                                 allSpecies.forEach { species -> 
                                     try {
                                         val p = com.cobblemon.mod.common.api.pokemon.PokemonProperties.parse(species.name.lowercase()).create()
@@ -276,7 +276,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                         if (button == 0) {
                             val entries = mutableListOf<net.drachi.cdde.client.ResourceSelectorScreen.ResourceEntry>()
                             try {
-                                val allSpecies = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.implemented
+                                val allSpecies = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.implemented.sortedBy { it.nationalPokedexNumber }
                                 allSpecies.forEach { species -> 
                                     try {
                                         val p = com.cobblemon.mod.common.api.pokemon.PokemonProperties.parse(species.name.lowercase()).create()
@@ -395,7 +395,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
             
             // "Add Theme" button parsing templates
             val addThemeBtn = Components.button(Component.translatable("gui.cdde.config.add_theme")) {
-                val themes = net.drachi.cdde.data.DungeonManager.availableRooms.keys.map { ResourceSelectorScreen.ResourceEntry(it) }
+                val themes = net.drachi.cdde.data.DungeonManager.availableRooms.keys.sorted().map { ResourceSelectorScreen.ResourceEntry(it) }
                 openResourceSelector(Component.translatable("gui.cdde.config.select_theme"), themes) { selectedTheme ->
                     if (!rule.config.activeSets.contains(selectedTheme)) {
                         rule.config.activeSets.add(selectedTheme)
@@ -491,7 +491,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                 if (button == 0) {
                     val entries = mutableListOf<ResourceSelectorScreen.ResourceEntry>()
                     try {
-                        val allSpecies = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.implemented
+                        val allSpecies = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.implemented.sortedBy { it.nationalPokedexNumber }
                         allSpecies.forEach { species -> 
                             try {
                                 val p = com.cobblemon.mod.common.api.pokemon.PokemonProperties.parse(species.name.lowercase()).create()
@@ -564,7 +564,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
             row.margins(Insets.bottom(2))
             
             val itemBtn = Components.button(Component.literal(spawn.item.split(":").lastOrNull()?.take(12) ?: spawn.item.take(12))) {
-                val allItems = BuiltInRegistries.ITEM.keySet().toList().map { ResourceSelectorScreen.ResourceEntry(it.toString(), ItemStack(BuiltInRegistries.ITEM.get(it))) }
+                val allItems = BuiltInRegistries.ITEM.keySet().toList().sortedBy { it.toString() }.map { ResourceSelectorScreen.ResourceEntry(it.toString(), ItemStack(BuiltInRegistries.ITEM.get(it))) }
                 openResourceSelector(Component.translatable("gui.cdde.config.select_item"), allItems) {
                     spawn.item = it
                     rebuildContent()
@@ -635,7 +635,7 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
                     ResourceSelectorScreen.ResourceEntry("none", ItemStack.EMPTY)
                 )
             } else {
-                BuiltInRegistries.BLOCK.keySet().toList().filter { id ->
+                BuiltInRegistries.BLOCK.keySet().toList().sortedBy { it.toString() }.filter { id ->
                     val block = BuiltInRegistries.BLOCK.get(id)
                     val isStair = block is net.minecraft.world.level.block.StairBlock
                     val isAir = block === net.minecraft.world.level.block.Blocks.AIR

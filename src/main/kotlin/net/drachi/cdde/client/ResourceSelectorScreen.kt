@@ -61,8 +61,7 @@ class ResourceSelectorScreen(
     private fun refreshGrid() {
         contentContainer.clearChildren()
         
-        val sorted = entries.sortedBy { it.id }
-        val filtered = sorted.filter { it.id.lowercase().contains(searchQuery) }.take(300)
+        val filtered = entries.filter { it.id.lowercase().contains(searchQuery) }
         
         val itemsPerRow = 10
         val rows = filtered.chunked(itemsPerRow)
