@@ -28,6 +28,7 @@ object ModItemGroups {
                 entries.accept(ModBlocks.BOSS_SPAWN)
                 entries.accept(ModBlocks.MINION_SPAWN)
                 entries.accept(ModBlocks.END_STAIR_SPAWN)
+                entries.accept(ModBlocks.PLAYER_SPAWN)
                 entries.accept(ModBlocks.TREASURE_DOOR)
                 entries.accept(ModBlocks.BOSS_DOOR)
                 entries.accept(ModItems.TREASURE_KEY)

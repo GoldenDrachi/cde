@@ -23,6 +23,7 @@ object ModBlocks {
     val BOSS_SPAWN = registerBlock("boss_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
     val MINION_SPAWN = registerBlock("minion_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
     val END_STAIR_SPAWN = registerBlock("end_stair_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
+    val PLAYER_SPAWN = registerBlock("player_spawn", Block(BlockBehaviour.Properties.ofFullCopy(Blocks.GLASS)))
     val TREASURE_DOOR = registerBlock("treasure_door", net.drachi.cdde.blocks.TreasureDoorBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.STONE_BRICKS)))
     val BOSS_DOOR = registerBlock("boss_door", net.drachi.cdde.blocks.BossDoorBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.STONE_BRICKS)))
     val HAZARD_WATER = registerBlock("hazard_water", net.drachi.cdde.blocks.HazardBlock(net.drachi.cdde.mechanics.HazardType.WATER, BlockBehaviour.Properties.ofFullCopy(Blocks.WATER).noCollission().noLootTable().noOcclusion()))

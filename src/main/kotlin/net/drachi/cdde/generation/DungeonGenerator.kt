@@ -50,12 +50,14 @@ class DungeonGenerator(
     private val roomPieces = mutableListOf<StructurePiece>()
     private val hazardPositions = mutableListOf<BlockPos>()
     private val enclosedWallCells = mutableSetOf<Pair<Int, Int>>()
+    private val customPlayerSpawns = mutableListOf<BlockPos>()
 
     fun generate() {
         placedPieces.clear()
         roomPieces.clear()
         hazardPositions.clear()
         enclosedWallCells.clear()
+        customPlayerSpawns.clear()
         DungeonManager.clearSpawns()
 
         val isEndFloor = floor == config.amountOfFloors && config.endFloorType != net.drachi.cdde.data.EndFloorType.NORMAL
@@ -126,6 +128,102 @@ class DungeonGenerator(
                 CobblemonDungeonDungeonsEngine.logger.info("PIECE PLACED: template=${piece.template} rot=${piece.rotation} pos=${piece.pos} openDirs=$openDirs")
             }
         }
+
+        // ── 7.5 Calculate safe player start position ──────────────────────
+        if (roomPieces.isNotEmpty()) {
+            for (room in roomPieces) {
+                val minJigY = room.parsedJigsaws.minOfOrNull { it.pos.y } ?: room.pos.y
+                val floorY = minJigY - 1
+                val box = room.boundingBox
+                
+                val exitPositions = room.parsedJigsaws.map { it.pos }.toSet()
+                val reachableFromExits = mutableSetOf<net.minecraft.core.BlockPos>()
+                if (exitPositions.isNotEmpty()) {
+                    val queue = ArrayDeque<net.minecraft.core.BlockPos>()
+                    for (exit in exitPositions) {
+                        queue.add(exit)
+                        reachableFromExits.add(exit)
+                    }
+                    
+                    while (queue.isNotEmpty()) {
+                        val current = queue.removeFirst()
+                        for (dir in net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                            for (dy in -1..1) {
+                                val next = current.relative(dir).above(dy)
+                                if (!box.isInside(next) || reachableFromExits.contains(next)) continue
+                                
+                                val state = level.getBlockState(next)
+                                val belowState = level.getBlockState(next.below())
+                                val aboveState = level.getBlockState(next.above())
+                                
+                                val isHazard = state.block == net.drachi.cdde.registry.ModBlocks.HAZARD || 
+                                               state.block == net.drachi.cdde.registry.ModBlocks.HAZARD_LAVA ||
+                                               state.block == net.drachi.cdde.registry.ModBlocks.HAZARD_VOID ||
+                                               state.block == net.drachi.cdde.registry.ModBlocks.HAZARD_WATER ||
+                                               state.fluidState.isSource ||
+                                               belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD || 
+                                               belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_LAVA ||
+                                               belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_VOID ||
+                                               belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_WATER ||
+                                               belowState.fluidState.isSource
+                                               
+                                val isSafeWalkable = !isHazard && !belowState.isAir && belowState.blocksMotion() && 
+                                                     (state.isAir || !state.blocksMotion()) && 
+                                                     (aboveState.isAir || !aboveState.blocksMotion())
+                                
+                                if (isSafeWalkable) {
+                                    reachableFromExits.add(next)
+                                    queue.add(next)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                val validSpots = mutableListOf<net.minecraft.core.BlockPos>()
+                
+                for (x in box.minX()..box.maxX()) {
+                    for (z in box.minZ()..box.maxZ()) {
+                        val pos = net.minecraft.core.BlockPos(x, floorY, z)
+                        val floorState = level.getBlockState(pos)
+                        val feetState = level.getBlockState(pos.above())
+                        val headState = level.getBlockState(pos.above(2))
+                        
+                        val isHazard = floorState.block == net.drachi.cdde.registry.ModBlocks.HAZARD || 
+                                       floorState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_LAVA ||
+                                       floorState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_VOID ||
+                                       floorState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_WATER ||
+                                       floorState.fluidState.isSource
+                                       
+                        if (!isHazard && !floorState.isAir && floorState.blocksMotion() && 
+                            (feetState.isAir || !feetState.blocksMotion()) && 
+                            (headState.isAir || !headState.blocksMotion())) {
+                            
+                            val posAbove = pos.above()
+                            if (exitPositions.isEmpty() || reachableFromExits.contains(posAbove)) {
+                                validSpots.add(posAbove)
+                            }
+                        }
+                    }
+                }
+                
+                if (validSpots.size >= 4) {
+                    val spawnsInRoom = customPlayerSpawns.filter { box.isInside(it) }
+                    if (spawnsInRoom.isNotEmpty()) {
+                        this.startPosition = spawnsInRoom.first()
+                    } else {
+                        val center = net.minecraft.core.BlockPos(box.minX() + (box.maxX() - box.minX())/2, floorY + 1, box.minZ() + (box.maxZ() - box.minZ())/2)
+                        this.startPosition = validSpots.minByOrNull { it.distSqr(center) } ?: validSpots.first()
+                    }
+                    break
+                }
+            }
+        }
+        
+        if (this.startPosition == null && customPlayerSpawns.isNotEmpty()) {
+            this.startPosition = customPlayerSpawns.first()
+        }
+
 
         // Render Hazard Seas first (before stairs, so stairs are not overwritten or placed on hazard sea)
         renderHazardSeas(grid, mapper)
@@ -354,12 +452,6 @@ class DungeonGenerator(
                 val roomRegionId = grid.allocateRegion()
                 grid.blockRoomFootprint(actualRx, actualRz, actualWCells, actualDCells, roomRegionId)
                 
-                if (roomsPlaced == 0) {
-                    val size = t.getSize(rot)
-                    val minJigY = TemplateMapper.parseJigsaws(t, rot).minOfOrNull { it.pos.y } ?: 1
-                    this.startPosition = roomPos.offset(size.x / 2, minJigY, size.z / 2)
-                }
-                
                 placedPieces.add(roomPiece)
                 roomPieces.add(roomPiece)
                 
@@ -410,32 +502,52 @@ class DungeonGenerator(
         piece.template.placeInWorld(level, piece.pos, BlockPos.ZERO, settings, level.random, 2)
         
         // Process Spawn Blocks
+        val isRoomOrEnd = piece.type == PieceType.ROOM || piece.type == PieceType.END
+        
+        fun isSafeSpawn(pos: net.minecraft.core.BlockPos): Boolean {
+            val belowState = level.getBlockState(pos.below())
+            val isHazard = belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD || 
+                           belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_LAVA ||
+                           belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_VOID ||
+                           belowState.block == net.drachi.cdde.registry.ModBlocks.HAZARD_WATER ||
+                           belowState.fluidState.isSource
+            return !isHazard && !belowState.isAir
+        }
+
         val pSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.POKEMON_SPAWN)
         for (info in pSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
-            DungeonManager.pokemonSpawns.add(info.pos)
-            CobblemonDungeonDungeonsEngine.logger.info("Registered Pokémon spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            if (isRoomOrEnd && isSafeSpawn(info.pos)) {
+                DungeonManager.pokemonSpawns.add(info.pos)
+                CobblemonDungeonDungeonsEngine.logger.info("Registered Pokémon spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            }
         }
         
         val iSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.ITEM_SPAWN)
         for (info in iSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
-            DungeonManager.itemSpawns.add(info.pos)
-            CobblemonDungeonDungeonsEngine.logger.info("Registered Item spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            if (isRoomOrEnd && isSafeSpawn(info.pos)) {
+                DungeonManager.itemSpawns.add(info.pos)
+                CobblemonDungeonDungeonsEngine.logger.info("Registered Item spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            }
         }
         
         val tSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.TREASURE_SPAWN)
         for (info in tSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
-            DungeonManager.treasureSpawns.add(info.pos)
-            CobblemonDungeonDungeonsEngine.logger.info("Registered Treasure spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            if (isSafeSpawn(info.pos)) {
+                DungeonManager.treasureSpawns.add(info.pos)
+                CobblemonDungeonDungeonsEngine.logger.info("Registered Treasure spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            }
         }
         
         val bSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.BOSS_SPAWN)
         for (info in bSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
-            DungeonManager.bossSpawns.add(info.pos)
-            CobblemonDungeonDungeonsEngine.logger.info("Registered Boss spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            if (isSafeSpawn(info.pos)) {
+                DungeonManager.bossSpawns.add(info.pos)
+                CobblemonDungeonDungeonsEngine.logger.info("Registered Boss spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            }
         }
         
         val mSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.MINION_SPAWN)
@@ -448,8 +560,19 @@ class DungeonGenerator(
         val eSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.END_STAIR_SPAWN)
         for (info in eSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
-            DungeonManager.endStairSpawns.add(info.pos)
-            CobblemonDungeonDungeonsEngine.logger.info("Registered End Stair spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            if (isSafeSpawn(info.pos)) {
+                DungeonManager.endStairSpawns.add(info.pos)
+                CobblemonDungeonDungeonsEngine.logger.info("Registered End Stair spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            }
+        }
+        
+        val plSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.PLAYER_SPAWN)
+        for (info in plSpawns) {
+            level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
+            if (isSafeSpawn(info.pos)) {
+                customPlayerSpawns.add(info.pos)
+                CobblemonDungeonDungeonsEngine.logger.info("Registered Player start spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
+            }
         }
     }
 
