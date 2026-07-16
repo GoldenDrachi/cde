@@ -1,0 +1,24 @@
+{
+    "cobblemon_move_id":  "cobblemon:substitute",
+    "cooldown_turns":  5.0,
+    "hp_cost_percent": 25.0,
+    "phases":  [
+                   {
+                       "attack_type":  "SELF",
+                       "base_power":  0,
+                       "accuracy":  100,
+                       "range":  0.0,
+                       "self_status_effects": [
+                           {
+                               "type": "substitute",
+                               "duration_turns": -1.0,
+                               "chance": 100
+                           }
+                       ],
+                       "particles":  {
+                                         "type":  "poof",
+                                         "count":  10
+                                     }
+                   }
+               ]
+}

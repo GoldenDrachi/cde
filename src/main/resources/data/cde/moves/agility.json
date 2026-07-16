@@ -1,0 +1,23 @@
+{
+    "cobblemon_move_id":  "cobblemon:agility",
+    "cooldown_turns":  4.0,
+    "phases":  [
+                   {
+                       "attack_type":  "SELF",
+                       "base_power":  0,
+                       "accuracy":  100,
+                       "range":  0.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "speed_up_2",
+                                                  "duration_turns":  15.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "particles":  {
+                                         "type":  "poof",
+                                         "count":  5
+                                     }
+                   }
+               ]
+}

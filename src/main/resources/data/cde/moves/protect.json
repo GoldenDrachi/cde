@@ -1,0 +1,22 @@
+{
+    "cobblemon_move_id":  "cobblemon:protect",
+    "cooldown_turns":  2.0,
+    "phases":  [
+                   {
+                       "attack_type":  "SELF",
+                       "base_power":  0,
+                       "accuracy":  100,
+                       "range":  0.0,
+                       "special_state_data":  {
+                                                  "protect":  {
+                                                                  "duration_turns":  3.0,
+                                                                  "chance_decay":  0.5
+                                                              }
+                                              },
+                       "particles":  {
+                                         "type":  "magic",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}

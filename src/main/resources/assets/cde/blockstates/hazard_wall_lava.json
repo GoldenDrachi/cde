@@ -1,0 +1,1 @@
+{ "variants": { "waterlogged=true": { "model": "cde:block/hazard_wall_lava" }, "waterlogged=false": { "model": "cde:block/hazard_wall_lava" } } }

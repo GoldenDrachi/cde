@@ -1,0 +1,6 @@
+{
+  "parent": "cde:block/tinted_cube_all",
+  "textures": {
+    "all": "minecraft:block/water_still"
+  }
+}

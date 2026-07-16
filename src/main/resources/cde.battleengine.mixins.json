@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "package": "net.drachi.cde.battleengine.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EntityMixin",
+    "PlayerMixin",
+    "MobAccessor",
+    "GoalSelectorAccessor",
+    "WalkAnimationStateAccessor",
+    "PokemonEntityMixin"
+  ],
+  "client": [
+    "client.PlayerEntityRendererMixin",
+    "client.ItemInHandRendererMixin",
+    "client.MinecraftClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
+
+

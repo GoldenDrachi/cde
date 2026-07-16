@@ -7,8 +7,10 @@ plugins {
 
 version = project.mod_version
 group = project.maven_group
+base.archivesName = project.mod_name
 
 repositories {
+	mavenLocal()
 	mavenCentral()
 	maven { url 'https://maven.fabricmc.net/' }
 	maven { url "https://api.modrinth.com/maven" }
@@ -28,13 +30,15 @@ dependencies {
 
 	// Fabric API
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+
+    // Optional CDBE dependency
+    	modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
 
 	// Serialization
 	implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3"
 
 	// Cobblemon
-	modCompileOnly "maven.modrinth:cobblemon:${project.cobblemon_version}"
+	modImplementation "maven.modrinth:cobblemon:${project.cobblemon_version}"
 
 	// Database
 	implementation "org.mariadb.jdbc:mariadb-java-client:${project.mariadb_version}"
@@ -78,3 +82,4 @@ jar {
 	def projectName = project.name
 	inputs.property "projectName", projectName
 }
+

@@ -1,0 +1,17 @@
+{
+    "cobblemon_move_id":  "cobblemon:grassknot",
+    "cooldown_turns":  2.0,
+    "phases":  [
+                   {
+                       "attack_type":  "MELEE",
+                       "base_power":  0,
+                       "accuracy":  100,
+                       "range":  4.0,
+                       "power_scaling":  "target_weight",
+                       "particles":  {
+                                         "type":  "composter",
+                                         "count":  5
+                                     }
+                   }
+               ]
+}

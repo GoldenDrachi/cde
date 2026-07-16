@@ -1,37 +1,40 @@
 {
   "schemaVersion": 1,
-  "id": "cdde",
+  "id": "cde",
   "version": "${version}",
-  "name": "Cobblemon Dungeon Dungeons Engine",
-  "description": "Procedural generation, group logic, and world systems for Cobblemon Dungeons.",
+  "name": "Cobblemon Dungeon Engine",
+  "description": "Procedural generation, group logic, world systems, and real-time battle engine for Cobblemon Dungeons.",
   "authors": [
     "Drachi"
   ],
   "contact": {
   },
   "license": "CC0-1.0",
-  "icon": "assets/cdde/icon.png",
+  "icon": "assets/cde/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
       {
         "adapter": "kotlin",
-        "value": "net.drachi.cdde.CobblemonDungeonDungeonsEngine"
+        "value": "net.drachi.cde.CDE"
       }
     ],
     "client": [
       {
         "adapter": "kotlin",
-        "value": "net.drachi.cdde.client.CDDEClient"
+        "value": "net.drachi.cde.CDEClient"
       }
     ],
     "fabric-datagen": [
       {
         "adapter": "kotlin",
-        "value": "net.drachi.cdde.datagen.ModDataGenerator"
+        "value": "net.drachi.cde.dungeonsengine.datagen.ModDataGenerator"
       }
     ]
   },
+  "mixins": [
+    "cde.battleengine.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.18.0",
     "minecraft": "~1.21.1",

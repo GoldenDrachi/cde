@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "cde:block/hazard_void" }
+  }
+}

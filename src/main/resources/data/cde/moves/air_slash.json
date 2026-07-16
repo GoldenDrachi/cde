@@ -1,0 +1,23 @@
+{
+    "cobblemon_move_id":  "cobblemon:airslash",
+    "cooldown_turns":  2.5,
+    "phases":  [
+                   {
+                       "attack_type":  "WAVE",
+                       "base_power":  75,
+                       "accuracy":  95,
+                       "range":  15.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "stun",
+                                                  "duration_turns":  1.0,
+                                                  "chance": 30
+                                              }
+                                          ],
+                       "particles":  {
+                                         "type":  "sweep_attack",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}

@@ -1,0 +1,24 @@
+{
+    "cobblemon_move_id":  "cobblemon:acidspray",
+    "cooldown_turns":  2.5,
+    "phases":  [
+                   {
+                       "attack_type":  "CONE",
+                       "base_power":  40,
+                       "accuracy":  100,
+                       "range":  12.0,
+                       "multiple_targets":  false,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "special_defense_down_2",
+                                                  "duration_turns":  15.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "particles":  {
+                                         "type":  "cobblemon:moves/acidspray/acidspray_projectile",
+                                         "count":  1
+                                     }
+                   }
+               ]
+}
