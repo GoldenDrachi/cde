@@ -1,5 +1,14 @@
 # Cobblemon Dungeon Engine (CDE)
 
+## Transparency & AI-Use Disclaimer
+
+This project utilizes Generative AI as a collaborative tool to assist in building the codebase and generating documentation. The AI acts as an assistant under human review and direction.
+
+**Important Note on AI Usage**:
+Generative AI is strictly limited to **code and documentation** generation. AI tools will **never** be used for generating any form of art, complex models, textures, or other creative assets for this project.
+
+---
+
 CDE is a modular Fabric mod integrating procedural dungeon generation, a custom group logic engine, and a real-time action combat engine for Cobblemon. It transforms the traditional turn-based Pokemon battle system into a dynamic, fast-paced action combat experience inspired by Mystery Dungeon and Pokepark titles, aswell as Legends ZA.
 
 ## Modular Architecture
@@ -150,13 +159,3 @@ With rooms and junction nodes placed, the straight pathways (wires) between them
 - **Sealing:** If placing an End template fails (due to intersection checks against nearby hallways or rooms), the engine falls back to sealing the doorway. It dynamically places a 5 x DungeonGrid.CELL_SIZE solid wall of the fallback theme blocks (by default, STONE_BRICKS) to seal the gap. Given the alignment guarantees, fallbacks should only occur in tight, overlapping spaces.
 
 ---
-
-## Developer Notes / Future Planning
-- **Loot Integration:** We need to discern a way to handle pokemon drops. They shouldn't directly drop their loot and only drop dungeon items. The loot itself should be saved and given to the players after finishing the dungeon or given to the players guild if available.
-
-## Transparency & AI-Use Disclaimer
-
-This project utilizes Generative AI as a collaborative tool to assist in building the codebase and generating documentation. The AI acts as an assistant under human review and direction.
-
-**Important Note on AI Usage**:
-Generative AI is strictly limited to **code and documentation** generation. AI tools will **never** be used for generating any form of art, complex models, textures, or other creative assets for this project.
