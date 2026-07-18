@@ -38,13 +38,24 @@ object BattleEngineApi {
         // Default Rule: You can't hit yourself
         if (caster == target) return true
 
-        // Default Rule: The player's own Pokémon is always friendly to them
-        if (caster is ServerPlayer && target is PokemonEntity && target.pokemon.getOwnerUUID() == caster.uuid) {
-            return true
-        }
+        val pvpEnabled = net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.isPvpEnabled
 
-        // Default Rule: A Pokémon cannot hit its own master
-        if (caster is PokemonEntity && target is ServerPlayer && caster.pokemon.getOwnerUUID() == target.uuid) {
+        // Extract "Owner UUID" for logic (Player's UUID, or Pokemon's Owner UUID)
+        val casterOwner = if (caster is PokemonEntity) caster.pokemon.getOwnerUUID() else if (caster is ServerPlayer) caster.uuid else null
+        val targetOwner = if (target is PokemonEntity) target.pokemon.getOwnerUUID() else if (target is ServerPlayer) target.uuid else null
+
+        // Handle relationships between Players and Owned Pokemon
+        if (casterOwner != null && targetOwner != null) {
+            // Same owner: Player hitting own Pokemon, Pokemon hitting its own master, or Pokemon hitting another Pokemon owned by same master
+            if (casterOwner == targetOwner) return true
+            
+            // Different owners: If PvP is disabled, they are universally friendly. 
+            // If PvP is enabled, they are hostile by default (but might be saved by friendlyCheckers below)
+            if (!pvpEnabled) return true
+        }
+        
+        // Spawned Pokemon vs Spawned Pokemon (Wild vs Wild)
+        if (caster is PokemonEntity && caster.pokemon.getOwnerUUID() == null && target is PokemonEntity && target.pokemon.getOwnerUUID() == null) {
             return true
         }
 

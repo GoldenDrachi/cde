@@ -14,7 +14,14 @@ object AiModule {
 
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register { entity, level ->
             if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity) {
-                injectAI(entity)
+                // Defer the AI injection to the next safe tick to prevent ConcurrentModificationException
+                // during sensitive chunk/tracker iterations (e.g., when teleports trigger chunk unloads)
+                entity.server?.execute {
+                    // Double check if entity is still alive and valid
+                    if (!entity.isRemoved) {
+                        injectAI(entity)
+                    }
+                }
             }
         }
     }
@@ -41,7 +48,11 @@ object AiModule {
                     HostilityState.NEUTRAL
                 } else {
                     val dimId = entity.level().dimension().location().toString()
-                    SpawnManager.getDimensionHostility(dimId)
+                    if (dimId == "cde:dungeon") {
+                        HostilityState.HOSTILE
+                    } else {
+                        SpawnManager.getDimensionHostility(dimId)
+                    }
                 }
                 SpawnManager.setEntityHostility(entity, state)
             }
@@ -57,8 +68,14 @@ object AiModule {
                 
                 goalSel.addGoal(0, net.drachi.cde.ai.HostileRealTimeGoal(entity))
                 
-                if (entity.pokemon.persistentData.getBoolean("cde_spawned")) {
-                    // Remove standard wander goals to replace with dungeon wander
+                val currentDimId = entity.level().dimension().location().toString()
+                if (currentDimId == "cde:dungeon") {
+                    val followRangeAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)
+                    if (followRangeAttr != null && followRangeAttr.baseValue < 64.0) {
+                        followRangeAttr.baseValue = 64.0
+                    }
+                    
+                    // Remove standard wander goals to replace with dynamic wander
                     availableGoals.removeIf {
                         val name = it.goal.javaClass.simpleName.lowercase()
                         name.contains("stroll") || name.contains("wander")
@@ -88,8 +105,10 @@ object AiModule {
 
             goalSel.addGoal(0, net.drachi.cde.ai.HostileRealTimeGoal(entity))
             
-            val dim = entity.level().dimension().location()
-            if (dim.namespace == "cde" && dim.path == "dungeon") {
+            val dimId = entity.level().dimension().location().toString()
+            val dimState = SpawnManager.getDimensionHostility(dimId)
+            
+            if (dimState != HostilityState.PEACEFUL) {
                 goalSel.addGoal(2, net.drachi.cde.ai.DungeonFollowPlayerGoal(entity))
                 goalSel.addGoal(3, net.drachi.cde.ai.DungeonWanderGoal(entity))
             }
@@ -104,7 +123,7 @@ object AiModule {
                 targetSel.addGoal(3, net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal(tamable))
             }
             
-            if (dim.namespace == "cde" && dim.path == "dungeon") {
+            if (dimState == HostilityState.HOSTILE) {
                 targetSel.addGoal(4, net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(entity, com.cobblemon.mod.common.entity.pokemon.PokemonEntity::class.java, 10, true, false) { e ->
                     e is com.cobblemon.mod.common.entity.pokemon.PokemonEntity && e.pokemon.getOwnerUUID() == null
                 })

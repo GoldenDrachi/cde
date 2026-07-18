@@ -28,9 +28,9 @@ class DungeonWanderGoal(private val pokemon: PokemonEntity, private val speedMod
             return false
         }
 
-        // Use DefaultRandomPos to find a far position (horizontal range 15, vertical 3)
+        // Use DefaultRandomPos to find a far position (horizontal range 32, vertical 5)
         // This encourages wider wandering than the standard 10x7
-        val pos = DefaultRandomPos.getPos(pokemon, 15, 3) ?: return false
+        val pos = DefaultRandomPos.getPos(pokemon, 32, 5) ?: return false
         targetPos = pos
         return true
     }
@@ -39,9 +39,23 @@ class DungeonWanderGoal(private val pokemon: PokemonEntity, private val speedMod
         return !pokemon.navigation.isDone && pokemon.isAlive
     }
 
+    private fun calculateSpeed(): Double {
+        val baseSpeed = pokemon.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+        val safeBaseSpeed = maxOf(baseSpeed, 0.1)
+        
+        val speedStat = pokemon.pokemon.speed.toDouble()
+        // Base 50 speed -> 1.0 multiplier on target speed
+        val ratio = 0.5 + (speedStat / 100.0)
+        
+        // Target absolute speed for wandering (0.25 is a good base for wandering)
+        val targetSpeed = 0.25 * ratio.coerceIn(0.6, 2.0)
+        
+        return speedModifier * (targetSpeed / safeBaseSpeed)
+    }
+
     override fun start() {
         if (targetPos != null) {
-            pokemon.navigation.moveTo(targetPos!!.x, targetPos!!.y, targetPos!!.z, speedModifier)
+            pokemon.navigation.moveTo(targetPos!!.x, targetPos!!.y, targetPos!!.z, calculateSpeed())
         }
     }
 
