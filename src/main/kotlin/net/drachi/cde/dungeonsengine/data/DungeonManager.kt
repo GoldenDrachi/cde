@@ -452,11 +452,10 @@ object DungeonManager {
             }
         }
         
-        val iterator = pendingGenerations.iterator()
+        val currentGenerations = pendingGenerations.toList().sortedByDescending { it.bossBar != null }
         val tickEndTime = System.currentTimeMillis() + 15 // 15ms budget
         
-        while (iterator.hasNext()) {
-            val gen = iterator.next()
+        for (gen in currentGenerations) {
             if (!gen.chunksForced) {
                 gen.chunksForced = true
                 for (chunk in gen.chunksToForce) {
@@ -476,9 +475,11 @@ object DungeonManager {
             
             if (!allLoaded) continue
             
-            // Process tasks within budget
-            while (gen.tasks.isNotEmpty() && System.currentTimeMillis() < tickEndTime) {
+            // Process tasks within budget, but guarantee AT LEAST ONE task executes to prevent complete starvation
+            var executedAtLeastOne = false
+            while (gen.tasks.isNotEmpty() && (!executedAtLeastOne || System.currentTimeMillis() < tickEndTime)) {
                 gen.tasks.removeFirst().invoke()
+                executedAtLeastOne = true
             }
             
             // Update BossBar progress
@@ -495,10 +496,8 @@ object DungeonManager {
             if (gen.tasks.isEmpty()) {
                 gen.onComplete.invoke()
                 gen.bossBar?.removeAllPlayers()
-                iterator.remove()
+                pendingGenerations.remove(gen)
             }
-            
-            if (System.currentTimeMillis() >= tickEndTime) break
         }
     }
 
