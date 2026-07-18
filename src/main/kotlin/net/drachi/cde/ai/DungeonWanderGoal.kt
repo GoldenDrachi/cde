@@ -28,9 +28,9 @@ class DungeonWanderGoal(private val pokemon: PokemonEntity, private val speedMod
             return false
         }
 
-        // Use DefaultRandomPos to find a far position (horizontal range 15, vertical 3)
+        // Use DefaultRandomPos to find a far position (horizontal range 32, vertical 5)
         // This encourages wider wandering than the standard 10x7
-        val pos = DefaultRandomPos.getPos(pokemon, 15, 3) ?: return false
+        val pos = DefaultRandomPos.getPos(pokemon, 32, 5) ?: return false
         targetPos = pos
         return true
     }

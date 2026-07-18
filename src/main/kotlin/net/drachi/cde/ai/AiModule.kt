@@ -70,6 +70,11 @@ object AiModule {
                 
                 val currentDimId = entity.level().dimension().location().toString()
                 if (currentDimId == "cde:dungeon") {
+                    val followRangeAttr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)
+                    if (followRangeAttr != null && followRangeAttr.baseValue < 64.0) {
+                        followRangeAttr.baseValue = 64.0
+                    }
+                    
                     // Remove standard wander goals to replace with dynamic wander
                     availableGoals.removeIf {
                         val name = it.goal.javaClass.simpleName.lowercase()
