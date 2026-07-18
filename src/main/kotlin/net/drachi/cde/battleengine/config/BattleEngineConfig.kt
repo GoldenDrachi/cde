@@ -28,9 +28,6 @@ data class BattleEngineConfig(
     // How many seconds line-of-sight can be broken before lock-on drops
     var losTimeoutSeconds: Float = 3.0f,
     
-    // Toggles whether the server logs detailed math calculations for damage and EXP
-    var debugLogging: Boolean = false,
-    
     @SerializedName("use_flat_status_damage") var useFlatStatusDamage: Boolean = false,
     
     // Toggles whether players can hit their own sent out pokemon

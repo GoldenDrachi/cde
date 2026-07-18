@@ -34,6 +34,7 @@ data class ActiveDungeon(
     val returnLocations: MutableMap<UUID, net.minecraft.core.BlockPos> = mutableMapOf(),
     val floorStartPositions: MutableMap<Int, net.minecraft.core.BlockPos> = mutableMapOf(),
     val stairPositions: MutableMap<Int, net.minecraft.core.BlockPos> = mutableMapOf(),
+    val collectedLoot: MutableList<net.minecraft.world.item.ItemStack> = mutableListOf(),
     var lastActiveTime: Long = System.currentTimeMillis(),
     var freezeTicks: Int = 0
 )
@@ -50,6 +51,18 @@ object DungeonManager {
     val minionSpawns = mutableListOf<net.minecraft.core.BlockPos>()
     val endStairSpawns = mutableListOf<net.minecraft.core.BlockPos>()
     
+    fun addLootToDungeon(level: net.minecraft.server.level.ServerLevel, pos: net.minecraft.core.BlockPos, stack: net.minecraft.world.item.ItemStack) {
+        val instanceIndex = pos.z / 10000
+        val expectedOriginZ = instanceIndex * 10000
+        val dungeon = activeDungeons.values.find { it.originZ == expectedOriginZ }
+        if (dungeon != null) {
+            dungeon.collectedLoot.add(stack)
+            if (net.drachi.cde.config.ConfigManager.globalConfig.debugLogging) {
+                net.drachi.cde.CDE.logger.info("Collected loot for dungeon ${dungeon.instanceId}: ${stack.count}x ${stack.item.descriptionId}")
+            }
+        }
+    }
+
     fun getActiveDungeon(player: net.minecraft.world.entity.player.Player): ActiveDungeon? {
         val level = player.level()
         val dim = level.dimension().location()
@@ -400,44 +413,41 @@ object DungeonManager {
 
         val airState = Blocks.AIR.defaultBlockState()
 
-
-
         for (cx in chunkMinX..chunkMaxX) {
             for (cz in chunkMinZ..chunkMaxZ) {
                 val chunk = level.getChunk(cx, cz)
                 val blockEntities = chunk.blockEntities.keys.toList()
                 blockEntities.forEach { chunk.removeBlockEntity(it) }
 
-                val sections = chunk.sections
-                for (i in sections.indices) {
-                    val section = sections[i]
-                    if (section == null) continue
+                val startX = maxOf(minX, cx * 16)
+                val endX = minOf(maxX, cx * 16 + 15)
+                val startZ = maxOf(minZ, cz * 16)
+                val endZ = minOf(maxZ, cz * 16 + 15)
 
-                    val registry = level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME)
-                    
-                    // Parse configurable biome or fallback to plains
-                    val biomeId = ResourceLocation.parse(floorConfig?.biome ?: "minecraft:plains")
-                    val biomeKey = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BIOME, biomeId)
-                    val targetBiome = registry.getHolder(biomeKey).orElse(registry.getHolderOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS))
-                    
-                    val newSection = LevelChunkSection(
-                        PalettedContainer(Block.BLOCK_STATE_REGISTRY, airState, PalettedContainer.Strategy.SECTION_STATES),
-                        PalettedContainer(registry.asHolderIdMap(), targetBiome, PalettedContainer.Strategy.SECTION_BIOMES)
-                    )
-                    newSection.recalcBlockCounts()
-                    sections[i] = newSection
+                for (x in startX..endX) {
+                    for (z in startZ..endZ) {
+                        for (y in 0..255) {
+                            val pos = net.minecraft.core.BlockPos(x, y, z)
+                            if (!chunk.getBlockState(pos).isAir) {
+                                // 2 = update clients
+                                // 16 = no neighbor update (prevent cascades)
+                                // 32 = suppress drops
+                                level.setBlock(pos, airState, 50)
+                            }
+                        }
+                    }
                 }
-                chunk.initializeLightSources()
-                level.chunkSource.lightEngine.lightChunk(chunk, false)
-                chunk.isUnsaved = true
             }
         }
 
         // Clean up entities in the area (items, etc.) but not players
-        val entities = level.getEntitiesOfClass(net.minecraft.world.entity.Entity::class.java, bounds)
-        for (e in entities) {
-            if (e !is net.minecraft.world.entity.player.Player) {
-                e.discard()
+        val entities = level.getEntities(null, bounds)
+        for (entity in entities) {
+            if (entity !is net.minecraft.world.entity.player.Player) {
+                if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity && entity.pokemon.getOwnerUUID() != null) {
+                    continue
+                }
+                entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED)
             }
         }
     }
@@ -546,21 +556,10 @@ object DungeonManager {
             // Teleport player (add 0.5 to center in block)
             member.teleportTo(level, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
 
-            // Teleport out-of-ball party Pokemon
-            val memberParty = com.cobblemon.mod.common.Cobblemon.storage.getParty(member)
-            for (i in 0 until memberParty.size()) {
-                val pokemon = memberParty.get(i)
-                if (pokemon != null && pokemon.entity != null) {
-                    val pEntity = pokemon.entity!!
-                    
-                    val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-                    spawnIndex++
-                    val pokePosRaw = startPos.offset(pokeOffset.first, 0, pokeOffset.second)
-                    val pokePos = findSafeSpawn(level, pokePosRaw)
-                    
-                    pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
-                }
-            }
+            // Teleport out-of-ball party Pokemon & Enforce PMD mechanics
+            val indexRef = IntArray(1) { spawnIndex }
+            net.drachi.cde.dungeonsengine.data.DungeonPartyManager.enforceDungeonPartyState(member, level, startPos, spawnOffsets, indexRef)
+            spawnIndex = indexRef[0]
 
             // Show Floor Title
             member.server.commands.performPrefixedCommand(
@@ -640,7 +639,7 @@ object DungeonManager {
         return returnPos
     }
 
-    fun joinDungeon(entity: net.minecraft.server.level.ServerPlayer, configId: String, bypassUnlockCheck: Boolean = false) {
+    fun executeJoin(entity: net.minecraft.server.level.ServerPlayer, configId: String, bypassUnlockCheck: Boolean = false) {
         val config = configs[configId]
         if (config == null) {
             entity.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cThis dungeon is linked to an invalid or missing config: $configId"))
@@ -717,18 +716,10 @@ object DungeonManager {
             
             member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
 
-            val memberParty = com.cobblemon.mod.common.Cobblemon.storage.getParty(member)
-            for (i in 0 until memberParty.size()) {
-                val pokemon = memberParty.get(i)
-                if (pokemon != null && pokemon.entity != null) {
-                    val pEntity = pokemon.entity!!
-                    val pokeOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-                    spawnIndex++
-                    val pokePosRaw = startPos.offset(pokeOffset.first, 0, pokeOffset.second)
-                    val pokePos = findSafeSpawn(dungeonLevel, pokePosRaw)
-                    pEntity.teleportTo(pokePos.x.toDouble() + 0.5, pokePos.y.toDouble(), pokePos.z.toDouble() + 0.5)
-                }
-            }
+            // Teleport out-of-ball party Pokemon & Enforce PMD mechanics
+            val indexRef = IntArray(1) { spawnIndex }
+            net.drachi.cde.dungeonsengine.data.DungeonPartyManager.enforceDungeonPartyState(member, dungeonLevel, startPos, spawnOffsets, indexRef)
+            spawnIndex = indexRef[0]
             
             val isDown = instance.config.stairDirection == StairDirection.DOWN
             val transKey = if (isDown) "message.cde.floor_down" else "message.cde.floor_up"

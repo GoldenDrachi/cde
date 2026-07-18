@@ -223,7 +223,7 @@ object HazardManager {
         val pType = if (effectType == "poison") "composter" else "crit"
         ParticleUtil.spawnEntityParticle(level, pType, entity)
 
-        if (net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.debugLogging) {
+        if (net.drachi.cde.config.ConfigManager.globalConfig.debugLogging) {
             CDE.logger.info("Virtual Hazard triggered on ${entity.uuid} with multiplier $damageMultiplier")
         }
     }

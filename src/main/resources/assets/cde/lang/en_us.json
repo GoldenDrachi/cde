@@ -27,6 +27,7 @@
   "message.cde.result.failed": "failed the exploration.",
   "message.cde.door_opens": "The door opens...",
   "message.cde.door_locked": "The door is locked.",
+  "message.cde.pokemon_picked_up_item": "%s picked up %s!",
   "gui.cde.config.title": "Editing Dungeon: %s",
   "gui.cde.config.amount_of_floors": "Amount of Floors",
   "gui.cde.config.biome": "Biome",

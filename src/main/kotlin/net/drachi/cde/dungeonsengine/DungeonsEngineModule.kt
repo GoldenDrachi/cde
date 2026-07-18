@@ -13,6 +13,8 @@ object DungeonsEngineModule {
 
         net.drachi.cde.dungeonsengine.config.DungeonsEngineConfigManager.loadConfig()
         
+        net.drachi.cde.battleengine.battle.utility.SpawnManager.registerDimensionHostility("cde:dungeon", net.drachi.cde.battleengine.battle.utility.HostilityState.HOSTILE)
+        
         net.drachi.cde.dungeonsengine.registry.ModBlocks.register()
         net.drachi.cde.dungeonsengine.registry.ModBlockEntities.register()
         net.drachi.cde.dungeonsengine.registry.ModItems.register()
@@ -120,6 +122,37 @@ CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
                             player.teleportTo(overworld, spawn.x.toDouble(), spawn.y.toDouble(), spawn.z.toDouble(), player.yRot, player.xRot)
                         }
                     }
+                }
+            }
+        }
+
+        com.cobblemon.mod.common.api.events.CobblemonEvents.POKEMON_SENT_PRE.subscribe { event ->
+            val ownerId = event.pokemon.getOwnerUUID() ?: return@subscribe
+            val player = event.level.server.playerList.getPlayer(ownerId) ?: return@subscribe
+            val dim = player.level().dimension().location()
+            if (dim.namespace == "cde" && dim.path == "dungeon") {
+                val party = com.cobblemon.mod.common.Cobblemon.storage.getParty(player)
+                val selectedSlot = net.drachi.cde.dungeonsengine.mechanics.PlayerHazardStateManager.getSelectedSlot(player.uuid)
+                val pokemonSlot = party.indexOf(event.pokemon)
+                if (pokemonSlot == selectedSlot && !net.drachi.cde.dungeonsengine.mechanics.PlayerHazardStateManager.isSwapping(player.uuid)) {
+                    event.cancel()
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cManual send-out is disabled in dungeons!").withStyle(net.minecraft.ChatFormatting.RED))
+                }
+            }
+        }
+
+        com.cobblemon.mod.common.api.events.CobblemonEvents.POKEMON_RECALL_PRE.subscribe { event ->
+            val ownerId = event.pokemon.getOwnerUUID() ?: return@subscribe
+            val entity = event.pokemon.entity ?: return@subscribe
+            val player = entity.level().server?.playerList?.getPlayer(ownerId) ?: return@subscribe
+            val dim = player.level().dimension().location()
+            if (dim.namespace == "cde" && dim.path == "dungeon") {
+                val party = com.cobblemon.mod.common.Cobblemon.storage.getParty(player)
+                val selectedSlot = net.drachi.cde.dungeonsengine.mechanics.PlayerHazardStateManager.getSelectedSlot(player.uuid)
+                val pokemonSlot = party.indexOf(event.pokemon)
+                if (pokemonSlot != selectedSlot && !net.drachi.cde.dungeonsengine.mechanics.PlayerHazardStateManager.isSwapping(player.uuid)) {
+                    event.cancel()
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§cPartners cannot be manually retrieved in dungeons!").withStyle(net.minecraft.ChatFormatting.RED))
                 }
             }
         }

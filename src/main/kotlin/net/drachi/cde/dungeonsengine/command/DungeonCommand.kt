@@ -50,6 +50,21 @@ object DungeonCommand {
                     }
                     .executes { context -> executeJoin(context.source, StringArgumentType.getString(context, "config_id")) }
             )
+            
+        val confirmJoinCmd = Commands.literal("confirm_join")
+            .then(
+                Commands.argument("leader_uuid", StringArgumentType.word())
+                    .executes { context ->
+                        val leaderUuidStr = StringArgumentType.getString(context, "leader_uuid")
+                        try {
+                            val leaderUuid = java.util.UUID.fromString(leaderUuidStr)
+                            net.drachi.cde.dungeonsengine.data.DungeonPartyManager.confirmJoin(context.source.playerOrException, leaderUuid)
+                        } catch (e: Exception) {
+                            // Invalid UUID
+                        }
+                        1
+                    }
+            )
 
         val unlockCmd = Commands.literal("unlock")
             .requires { it.hasPermission(2) }
@@ -136,8 +151,8 @@ object DungeonCommand {
                     )
             )
 
-        dungeonNode.then(helpCmd).then(leaveCmd).then(portalCmd).then(configCmd).then(cleanupCmd).then(joinCmd).then(unlockCmd)
-        cdeDungeonNode.then(helpCmd).then(leaveCmd).then(portalCmd).then(configCmd).then(cleanupCmd).then(joinCmd).then(unlockCmd)
+        dungeonNode.then(helpCmd).then(leaveCmd).then(portalCmd).then(configCmd).then(cleanupCmd).then(joinCmd).then(confirmJoinCmd).then(unlockCmd)
+        cdeDungeonNode.then(helpCmd).then(leaveCmd).then(portalCmd).then(configCmd).then(cleanupCmd).then(joinCmd).then(confirmJoinCmd).then(unlockCmd)
         cdeNode.then(cdeDungeonNode)
 
         dispatcher.register(dungeonNode)
@@ -373,7 +388,7 @@ object DungeonCommand {
                 source.sendFailure(Component.literal("You have not unlocked the dungeon '$configId'."))
                 return 0
             }
-            DungeonManager.joinDungeon(player, configId, bypassUnlockCheck = false)
+            net.drachi.cde.dungeonsengine.data.DungeonPartyManager.initiateDungeonJoin(player, configId)
             return 1
         }
     }

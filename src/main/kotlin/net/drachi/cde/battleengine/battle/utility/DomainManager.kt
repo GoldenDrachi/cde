@@ -54,7 +54,7 @@ object DomainManager {
                 dataToUse = domainData.copy(radius = -1.0f)
             }
             activeWeatherDomains[caster.level().dimension().location()] = newDomain.copy(data = dataToUse)
-            if (net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.debugLogging) {
+            if (net.drachi.cde.config.ConfigManager.globalConfig.debugLogging) {
                 CDE.logger.info("Weather ${domainData.weatherCondition} cast in ${caster.level().dimension().location()} by ${caster.uuid}")
             }
         } else {

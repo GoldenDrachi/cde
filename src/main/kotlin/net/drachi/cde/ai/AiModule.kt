@@ -12,73 +12,102 @@ object AiModule {
     fun init() {
         CDE.logger.info("Initializing CDE AI Module")
 
-        CobblemonEvents.POKEMON_ENTITY_SPAWN.subscribe { event ->
-            if (event.entity.pokemon.getOwnerUUID() == null) {
-                // Wild Pokemon Logic
-                
-                // Note: AbilityExecutor.executeOnSwitchIn might technically belong to BattleEngine 
-                // but since we are modifying AI goals here, we just run the hostility checks.
-                var state = SpawnManager.getEntityHostility(event.entity)
-                
-                if (state == null) {
-                    val manualStateStr = event.entity.pokemon.persistentData.getString("cde_hostility")
-                    state = if (manualStateStr == "hostile") {
-                        HostilityState.HOSTILE
-                    } else if (manualStateStr == "peaceful") {
-                        HostilityState.PEACEFUL
-                    } else if (manualStateStr == "neutral") {
-                        HostilityState.NEUTRAL
-                    } else {
-                        val dimId = event.entity.level().dimension().location().toString()
-                        SpawnManager.getDimensionHostility(dimId)
-                    }
-                    SpawnManager.setEntityHostility(event.entity, state)
-                }
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register { entity, level ->
+            if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity) {
+                injectAI(entity)
+            }
+        }
+    }
 
-                if (state != HostilityState.PEACEFUL) {
-                    val goalSel = (event.entity as MobAccessor).goalSelector
-                    val targetSel = (event.entity as MobAccessor).targetSelector
-                    
-                    // Clear vanilla attack and flee goals
-                    val availableGoals = (goalSel as GoalSelectorAccessor).availableGoals
-                    availableGoals.removeIf {
-                        val name = it.goal.javaClass.simpleName.lowercase()
-                        name.contains("attack") || name.contains("avoid") || name.contains("panic") || name.contains("flee")
-                    }
-                    
-                    goalSel.addGoal(0, net.drachi.cde.ai.HostileRealTimeGoal(event.entity))
-                    
-                    if (state == HostilityState.HOSTILE) {
-                        targetSel.addGoal(1, net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(event.entity, net.minecraft.world.entity.player.Player::class.java, true))
-                        targetSel.addGoal(2, net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(event.entity, com.cobblemon.mod.common.entity.pokemon.PokemonEntity::class.java, 10, true, false) { entity ->
-                            entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity && entity.pokemon.getOwnerUUID() != null
-                        })
-                    } else {
-                        targetSel.addGoal(1, net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal(event.entity))
-                    }
+    private fun injectAI(entity: com.cobblemon.mod.common.entity.pokemon.PokemonEntity) {
+        val goalSel = (entity as MobAccessor).goalSelector
+        val availableGoals = (goalSel as GoalSelectorAccessor).availableGoals
+        
+        // Prevent duplicate injection
+        if (availableGoals.any { it.goal is net.drachi.cde.ai.HostileRealTimeGoal }) return
+
+        if (entity.pokemon.getOwnerUUID() == null) {
+            // Wild Pokemon Logic
+            
+            var state = SpawnManager.getEntityHostility(entity)
+            
+            if (state == null) {
+                val manualStateStr = entity.pokemon.persistentData.getString("cde_hostility")
+                state = if (manualStateStr == "hostile") {
+                    HostilityState.HOSTILE
+                } else if (manualStateStr == "peaceful") {
+                    HostilityState.PEACEFUL
+                } else if (manualStateStr == "neutral") {
+                    HostilityState.NEUTRAL
+                } else {
+                    val dimId = entity.level().dimension().location().toString()
+                    SpawnManager.getDimensionHostility(dimId)
                 }
-            } else {
-                // Owned Pokemon Logic (Pet AI)
-                val goalSel = (event.entity as MobAccessor).goalSelector
-                val targetSel = (event.entity as MobAccessor).targetSelector
+                SpawnManager.setEntityHostility(entity, state)
+            }
+
+            if (state != HostilityState.PEACEFUL) {
+                val targetSel = (entity as MobAccessor).targetSelector
                 
                 // Clear vanilla attack and flee goals
-                val availableGoals = (goalSel as GoalSelectorAccessor).availableGoals
                 availableGoals.removeIf {
                     val name = it.goal.javaClass.simpleName.lowercase()
                     name.contains("attack") || name.contains("avoid") || name.contains("panic") || name.contains("flee")
                 }
-
-                goalSel.addGoal(0, net.drachi.cde.ai.HostileRealTimeGoal(event.entity))
-                // HurtByTargetGoal so they defend themselves and the owner if attacked
-                targetSel.addGoal(1, net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal(event.entity))
                 
-                // OwnerHurtByTargetGoal & OwnerHurtTargetGoal to make them defend the player
-                if (event.entity is net.minecraft.world.entity.TamableAnimal) {
-                    val tamable = event.entity as net.minecraft.world.entity.TamableAnimal
-                    targetSel.addGoal(2, net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal(tamable))
-                    targetSel.addGoal(3, net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal(tamable))
+                goalSel.addGoal(0, net.drachi.cde.ai.HostileRealTimeGoal(entity))
+                
+                if (entity.pokemon.persistentData.getBoolean("cde_spawned")) {
+                    // Remove standard wander goals to replace with dungeon wander
+                    availableGoals.removeIf {
+                        val name = it.goal.javaClass.simpleName.lowercase()
+                        name.contains("stroll") || name.contains("wander")
+                    }
+                    goalSel.addGoal(1, net.drachi.cde.ai.DungeonPickupItemGoal(entity))
+                    goalSel.addGoal(2, net.drachi.cde.ai.DungeonWanderGoal(entity))
                 }
+                
+                if (state == HostilityState.HOSTILE) {
+                    targetSel.addGoal(1, net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(entity, net.minecraft.world.entity.player.Player::class.java, true))
+                    targetSel.addGoal(2, net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(entity, com.cobblemon.mod.common.entity.pokemon.PokemonEntity::class.java, 10, true, false) { e ->
+                        e is com.cobblemon.mod.common.entity.pokemon.PokemonEntity && e.pokemon.getOwnerUUID() != null
+                    })
+                } else {
+                    targetSel.addGoal(1, net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal(entity))
+                }
+            }
+        } else {
+            // Owned Pokemon Logic (Pet AI)
+            val targetSel = (entity as MobAccessor).targetSelector
+            
+            // Clear vanilla attack and flee goals
+            availableGoals.removeIf {
+                val name = it.goal.javaClass.simpleName.lowercase()
+                name.contains("attack") || name.contains("avoid") || name.contains("panic") || name.contains("flee")
+            }
+
+            goalSel.addGoal(0, net.drachi.cde.ai.HostileRealTimeGoal(entity))
+            
+            val dim = entity.level().dimension().location()
+            if (dim.namespace == "cde" && dim.path == "dungeon") {
+                goalSel.addGoal(2, net.drachi.cde.ai.DungeonFollowPlayerGoal(entity))
+                goalSel.addGoal(3, net.drachi.cde.ai.DungeonWanderGoal(entity))
+            }
+
+            // HurtByTargetGoal so they defend themselves and the owner if attacked
+            targetSel.addGoal(1, net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal(entity))
+            
+            // OwnerHurtByTargetGoal & OwnerHurtTargetGoal to make them defend the player
+            if (entity is net.minecraft.world.entity.TamableAnimal) {
+                val tamable = entity as net.minecraft.world.entity.TamableAnimal
+                targetSel.addGoal(2, net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal(tamable))
+                targetSel.addGoal(3, net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal(tamable))
+            }
+            
+            if (dim.namespace == "cde" && dim.path == "dungeon") {
+                targetSel.addGoal(4, net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(entity, com.cobblemon.mod.common.entity.pokemon.PokemonEntity::class.java, 10, true, false) { e ->
+                    e is com.cobblemon.mod.common.entity.pokemon.PokemonEntity && e.pokemon.getOwnerUUID() == null
+                })
             }
         }
     }

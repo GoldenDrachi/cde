@@ -14,6 +14,7 @@ class DungeonInstance(
     var currentFloor: Int = 1
     var isCompleted: Boolean = false
     val activeModifiers: MutableList<String> = mutableListOf()
+    val collectedLoot: MutableList<net.minecraft.world.item.ItemStack> = mutableListOf()
     
     fun getPlayersInDungeon(server: net.minecraft.server.MinecraftServer): List<ServerPlayer> {
         // Logic to fetch all online players that belong to this partyId

@@ -34,5 +34,9 @@ data class GlobalConfig(
 
     // --- Lifecycle & Persistence Settings ---
     val _comment_serverId: String = "Unique identifier for this server instance (used for cross-server database tracking).",
-    val serverId: String = "server-1"
+    val serverId: String = "server-1",
+
+    // --- Developer Settings ---
+    val _comment_debugLogging: String = "Toggles whether the server logs detailed mathematical calculations, item pickups, and engine traces.",
+    val debugLogging: Boolean = false
 )
