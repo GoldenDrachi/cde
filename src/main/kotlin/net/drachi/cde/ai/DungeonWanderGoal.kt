@@ -40,10 +40,17 @@ class DungeonWanderGoal(private val pokemon: PokemonEntity, private val speedMod
     }
 
     private fun calculateSpeed(): Double {
+        val baseSpeed = pokemon.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+        val safeBaseSpeed = maxOf(baseSpeed, 0.1)
+        
         val speedStat = pokemon.pokemon.speed.toDouble()
-        // Base 50 speed -> 1.0 modifier
+        // Base 50 speed -> 1.0 multiplier on target speed
         val ratio = 0.5 + (speedStat / 100.0)
-        return speedModifier * ratio.coerceIn(0.6, 2.0)
+        
+        // Target absolute speed for wandering (0.25 is a good base for wandering)
+        val targetSpeed = 0.25 * ratio.coerceIn(0.6, 2.0)
+        
+        return speedModifier * (targetSpeed / safeBaseSpeed)
     }
 
     override fun start() {

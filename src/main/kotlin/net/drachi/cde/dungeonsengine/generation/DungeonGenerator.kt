@@ -52,6 +52,13 @@ class DungeonGenerator(
     private val enclosedWallCells = mutableSetOf<Pair<Int, Int>>()
     private val customPlayerSpawns = mutableListOf<BlockPos>()
 
+    val pokemonSpawns = mutableListOf<BlockPos>()
+    val itemSpawns = mutableListOf<BlockPos>()
+    val treasureSpawns = mutableListOf<BlockPos>()
+    val bossSpawns = mutableListOf<BlockPos>()
+    val minionSpawns = mutableListOf<BlockPos>()
+    val endStairSpawns = mutableListOf<BlockPos>()
+
     fun getRenderTasks(): List<() -> Unit> {
         val renderTasks = mutableListOf<() -> Unit>()
         placedPieces.clear()
@@ -59,6 +66,12 @@ class DungeonGenerator(
         hazardPositions.clear()
         enclosedWallCells.clear()
         customPlayerSpawns.clear()
+        pokemonSpawns.clear()
+        itemSpawns.clear()
+        treasureSpawns.clear()
+        bossSpawns.clear()
+        minionSpawns.clear()
+        endStairSpawns.clear()
         DungeonManager.clearSpawns()
 
         val isEndFloor = floor == config.amountOfFloors && config.endFloorType != net.drachi.cde.dungeonsengine.data.EndFloorType.NORMAL
@@ -321,47 +334,48 @@ class DungeonGenerator(
     }
 
     private fun spawnEntities() {
-        // Spawn Normal Pokémon
-        for (pos in DungeonManager.pokemonSpawns) {
-            val spawnInfo = selectPokemon(floorConfig.pokemonSpawns) ?: continue
-            spawnPokemonEntity(pos, spawnInfo)
+        // Spawn Normal Pokémon (Initial wave up to pokemonSpawnOnGeneration)
+        val initialPokemons = floorConfig.pokemonSpawnOnGeneration.coerceAtMost(floorConfig.maxPokemon)
+        if (initialPokemons > 0) {
+            val shuffledPokemons = pokemonSpawns.shuffled()
+            var pokemonsSpawned = 0
+            for (pos in shuffledPokemons) {
+                if (pokemonsSpawned >= initialPokemons) break
+                val spawnInfo = DungeonManager.selectPokemon(floorConfig.pokemonSpawns, level.random) ?: continue
+                DungeonManager.spawnPokemonEntity(level, pos, spawnInfo)
+                pokemonsSpawned++
+            }
         }
         
-        // Spawn Normal Items
-        for (pos in DungeonManager.itemSpawns) {
-            val itemInfo = selectItem(floorConfig.itemSpawns) ?: continue
-            spawnItemEntity(pos, itemInfo)
+        // Spawn Normal Items with chance, up to maxItems
+        var itemsSpawned = 0
+        val shuffledItems = itemSpawns.shuffled()
+        for (pos in shuffledItems) {
+            if (itemsSpawned >= floorConfig.maxItems) break
+            if (level.random.nextDouble() <= floorConfig.itemSpawnChance) {
+                val itemInfo = selectItem(floorConfig.itemSpawns) ?: continue
+                spawnItemEntity(pos, itemInfo)
+                itemsSpawned++
+            }
         }
         
         // Spawn Treasure (End Floor)
-        for (pos in DungeonManager.treasureSpawns) {
+        for (pos in treasureSpawns) {
             val itemInfo = selectItem(config.endFloorConfig.treasure) ?: continue
             spawnItemEntity(pos, itemInfo)
         }
         
         // Spawn Boss (End Floor)
-        for (pos in DungeonManager.bossSpawns) {
-            val spawnInfo = selectPokemon(config.endFloorConfig.boss) ?: continue
-            spawnPokemonEntity(pos, spawnInfo)
+        for (pos in bossSpawns) {
+            val spawnInfo = DungeonManager.selectPokemon(config.endFloorConfig.boss, level.random) ?: continue
+            DungeonManager.spawnPokemonEntity(level, pos, spawnInfo)
         }
         
         // Spawn Minions (End Floor)
-        for (pos in DungeonManager.minionSpawns) {
-            val spawnInfo = selectPokemon(config.endFloorConfig.minion) ?: continue
-            spawnPokemonEntity(pos, spawnInfo)
+        for (pos in minionSpawns) {
+            val spawnInfo = DungeonManager.selectPokemon(config.endFloorConfig.minion, level.random) ?: continue
+            DungeonManager.spawnPokemonEntity(level, pos, spawnInfo)
         }
-    }
-    
-    private fun selectPokemon(list: List<net.drachi.cde.dungeonsengine.data.PokemonSpawnEntry>): net.drachi.cde.dungeonsengine.data.PokemonSpawnEntry? {
-        if (list.isEmpty()) return null
-        val totalWeight = list.sumOf { it.weight }
-        if (totalWeight <= 0) return list.randomOrNull()
-        var r = level.random.nextInt(totalWeight)
-        for (entry in list) {
-            r -= entry.weight
-            if (r < 0) return entry
-        }
-        return list.last()
     }
     
     private fun selectItem(list: List<net.drachi.cde.dungeonsengine.data.ItemSpawnEntry>): net.drachi.cde.dungeonsengine.data.ItemSpawnEntry? {
@@ -374,34 +388,6 @@ class DungeonGenerator(
             if (r < 0) return entry
         }
         return list.last()
-    }
-    
-    private fun spawnPokemonEntity(pos: BlockPos, entry: net.drachi.cde.dungeonsengine.data.PokemonSpawnEntry) {
-        try {
-            val speciesName = entry.pokemon.split(":").lastOrNull() ?: entry.pokemon
-            val species = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.getByName(speciesName) ?: return
-            
-            val levelValue = if (entry.maxLevel > entry.minLevel) {
-                level.random.nextInt(entry.maxLevel - entry.minLevel + 1) + entry.minLevel
-            } else {
-                entry.minLevel
-            }
-            
-            val pokemon = species.create(levelValue)
-            pokemon.persistentData.putBoolean("cde_spawned", true)
-            pokemon.persistentData.putString("cde_hostility", "hostile")
-            
-            val entity = com.cobblemon.mod.common.entity.pokemon.PokemonEntity(level, pokemon)
-            entity.setPos(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5)
-            entity.addTag("cde_spawned")
-            entity.setPersistenceRequired()
-            
-            level.addFreshEntity(entity)
-            
-            CDE.logger.info("Spawned ${pokemon.species.name} (Lvl $levelValue) at $pos")
-        } catch (e: Exception) {
-            CDE.logger.error("Failed to spawn pokemon: ${entry.pokemon}", e)
-        }
     }
     
     private fun spawnItemEntity(pos: BlockPos, entry: net.drachi.cde.dungeonsengine.data.ItemSpawnEntry) {
@@ -594,7 +580,7 @@ class DungeonGenerator(
         for (info in pSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
             if (isRoomOrEnd && isSafeSpawn(info.pos)) {
-                DungeonManager.pokemonSpawns.add(info.pos)
+                pokemonSpawns.add(info.pos)
                 CDE.logger.info("Registered Pokémon spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
             }
         }
@@ -603,7 +589,7 @@ class DungeonGenerator(
         for (info in iSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
             if (isRoomOrEnd && isSafeSpawn(info.pos)) {
-                DungeonManager.itemSpawns.add(info.pos)
+                itemSpawns.add(info.pos)
                 CDE.logger.info("Registered Item spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
             }
         }
@@ -612,7 +598,7 @@ class DungeonGenerator(
         for (info in tSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
             if (isSafeSpawn(info.pos)) {
-                DungeonManager.treasureSpawns.add(info.pos)
+                treasureSpawns.add(info.pos)
                 CDE.logger.info("Registered Treasure spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
             }
         }
@@ -621,7 +607,7 @@ class DungeonGenerator(
         for (info in bSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
             if (isSafeSpawn(info.pos)) {
-                DungeonManager.bossSpawns.add(info.pos)
+                bossSpawns.add(info.pos)
                 CDE.logger.info("Registered Boss spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
             }
         }
@@ -629,7 +615,7 @@ class DungeonGenerator(
         val mSpawns = piece.template.filterBlocks(piece.pos, settings, ModBlocks.MINION_SPAWN)
         for (info in mSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
-            DungeonManager.minionSpawns.add(info.pos)
+            minionSpawns.add(info.pos)
             CDE.logger.info("Registered Minion spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
         }
         
@@ -637,7 +623,7 @@ class DungeonGenerator(
         for (info in eSpawns) {
             level.setBlock(info.pos, Blocks.AIR.defaultBlockState(), 2)
             if (isSafeSpawn(info.pos)) {
-                DungeonManager.endStairSpawns.add(info.pos)
+                endStairSpawns.add(info.pos)
                 CDE.logger.info("Registered End Stair spawn at ${info.pos.x}, ${info.pos.y}, ${info.pos.z}")
             }
         }
@@ -721,8 +707,8 @@ class DungeonGenerator(
 
 
     private fun placeStairs(roomPieces: List<StructurePiece>, theme: String) {
-        if (DungeonManager.endStairSpawns.isNotEmpty()) {
-            this.stairPosition = DungeonManager.endStairSpawns.first()
+        if (endStairSpawns.isNotEmpty()) {
+            this.stairPosition = endStairSpawns.first()
             CDE.logger.info("Using configured END_STAIR_SPAWN at ${this.stairPosition}")
             return
         }

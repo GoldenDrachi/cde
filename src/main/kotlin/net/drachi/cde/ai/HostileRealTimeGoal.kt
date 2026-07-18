@@ -136,25 +136,7 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
             }
         }
         
-        val currentTarget = target
-        val distSq = if (currentTarget != null) pokemonEntity.distanceToSqr(currentTarget) else 0.0
-        
-        // Filter out moves that would be out of range if possible
-        val inRangeMoves = validRtMoves.filter { pair ->
-            val firstPhase = pair.second.phases.firstOrNull()
-            if (firstPhase != null) {
-                val minRange = (pokemonEntity.bbWidth / 2.0f + (currentTarget?.bbWidth ?: 1.0f) / 2.0f + firstPhase.range)
-                val rangeSq = minRange * minRange
-                distSq <= rangeSq
-            } else false
-        }
-        
-        val pickedPair = if (inRangeMoves.isNotEmpty()) {
-            inRangeMoves.random()
-        } else {
-            // Pick a move with the longest range as fallback
-            validRtMoves.maxByOrNull { it.second.phases.firstOrNull()?.range ?: 0f } ?: validRtMoves.random()
-        }
+        val pickedPair = validRtMoves.random()
         
         selectedCobblemonMove = pickedPair.first
         selectedRtMove = pickedPair.second
@@ -194,7 +176,13 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
         val distSq = pokemonEntity.distanceToSqr(currentTarget)
         
         if (distSq > rangeSq) {
-            pokemonEntity.navigation.moveTo(currentTarget, 1.3)
+            val baseSpeed = pokemonEntity.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+            val safeBaseSpeed = maxOf(baseSpeed, 0.1)
+            // Absolute target speed for combat. Same calculation pattern as DungeonFollowPlayerGoal
+            val targetSpeed = 0.35 // 0.35 is roughly what 1.3 was intended to be on a normal mob
+            val speedModifier = targetSpeed / safeBaseSpeed
+            
+            pokemonEntity.navigation.moveTo(currentTarget, speedModifier)
             return
         } else {
             pokemonEntity.navigation.stop()

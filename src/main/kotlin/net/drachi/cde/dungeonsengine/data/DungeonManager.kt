@@ -37,7 +37,9 @@ data class ActiveDungeon(
     val collectedLoot: MutableList<net.minecraft.world.item.ItemStack> = mutableListOf(),
     var lastActiveTime: Long = System.currentTimeMillis(),
     var freezeTicks: Int = 0,
-    val loadedChunks: MutableSet<net.minecraft.world.level.ChunkPos> = mutableSetOf()
+    val loadedChunks: MutableSet<net.minecraft.world.level.ChunkPos> = mutableSetOf(),
+    val pokemonSpawns: MutableList<net.minecraft.core.BlockPos> = mutableListOf(),
+    var lastPokemonSpawnTick: Long = 0
 )
 
 object DungeonManager {
@@ -368,6 +370,38 @@ object DungeonManager {
             val isGenerating = pendingGenerations.any { it.dungeon?.instanceId == id }
             if (isGenerating) continue
 
+            if (dungeon.freezeTicks <= 0 && dungeon.pokemonSpawns.isNotEmpty()) {
+                val serverTicks = server.tickCount
+                val floorConfig = dungeon.config.getFloorConfig(dungeon.currentFloor)
+                if (serverTicks - dungeon.lastPokemonSpawnTick >= floorConfig.pokemonRespawnTicks) {
+                    dungeon.lastPokemonSpawnTick = serverTicks.toLong()
+                    
+                    val floorOriginX = dungeon.originX + ((dungeon.currentFloor - 1) * 1000)
+                    val gridDim = net.drachi.cde.dungeonsengine.generation.DungeonGrid.gridSizeForRooms(floorConfig.maxRooms)
+                    val maxBlocks = gridDim * net.drachi.cde.dungeonsengine.generation.DungeonGrid.CELL_SIZE
+                    val bounds = net.minecraft.world.phys.AABB(
+                        floorOriginX.toDouble() - 50.0, -64.0, dungeon.originZ.toDouble() - 50.0,
+                        floorOriginX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, dungeon.originZ.toDouble() + maxBlocks.toDouble() + 50.0
+                    )
+                    
+                    val dungeonLevel = server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, net.minecraft.resources.ResourceLocation.parse("cde:dungeon")))
+                    if (dungeonLevel != null) {
+                        val activePokemons = dungeonLevel.getEntitiesOfClass(com.cobblemon.mod.common.entity.pokemon.PokemonEntity::class.java, bounds) {
+                            it.tags.contains("cde_spawned") && it.pokemon.persistentData.getString("cde_hostility") == "hostile"
+                        }
+                        
+                        if (activePokemons.size < floorConfig.maxPokemon) {
+                            val randomSource = dungeonLevel.random
+                            val spawnPos = dungeon.pokemonSpawns.random(kotlin.random.Random(randomSource.nextInt()))
+                            val spawnInfo = selectPokemon(floorConfig.pokemonSpawns, randomSource)
+                            if (spawnInfo != null) {
+                                spawnPokemonEntity(dungeonLevel, spawnPos, spawnInfo)
+                            }
+                        }
+                    }
+                }
+            }
+
             if (dungeon.returnLocations.isEmpty()) {
                 CDE.logger.info("Dungeon $id is completely empty (all players left) and is being cleared.")
                 toRemove.add(id)
@@ -498,6 +532,46 @@ object DungeonManager {
                 gen.bossBar?.removeAllPlayers()
                 pendingGenerations.remove(gen)
             }
+        }
+    }
+
+    fun selectPokemon(list: List<net.drachi.cde.dungeonsengine.data.PokemonSpawnEntry>, random: net.minecraft.util.RandomSource): net.drachi.cde.dungeonsengine.data.PokemonSpawnEntry? {
+        if (list.isEmpty()) return null
+        val totalWeight = list.sumOf { it.weight }
+        if (totalWeight <= 0) return list.randomOrNull(kotlin.random.Random(random.nextInt()))
+        var r = random.nextInt(totalWeight)
+        for (entry in list) {
+            r -= entry.weight
+            if (r < 0) return entry
+        }
+        return list.last()
+    }
+    
+    fun spawnPokemonEntity(level: ServerLevel, pos: net.minecraft.core.BlockPos, entry: net.drachi.cde.dungeonsengine.data.PokemonSpawnEntry) {
+        try {
+            val speciesName = entry.pokemon.split(":").lastOrNull() ?: entry.pokemon
+            val species = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.getByName(speciesName) ?: return
+            
+            val levelValue = if (entry.maxLevel > entry.minLevel) {
+                level.random.nextInt(entry.maxLevel - entry.minLevel + 1) + entry.minLevel
+            } else {
+                entry.minLevel
+            }
+            
+            val pokemon = species.create(levelValue)
+            pokemon.persistentData.putBoolean("cde_spawned", true)
+            pokemon.persistentData.putString("cde_hostility", "hostile")
+            
+            val entity = com.cobblemon.mod.common.entity.pokemon.PokemonEntity(level, pokemon)
+            entity.setPos(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5)
+            entity.addTag("cde_spawned")
+            entity.setPersistenceRequired()
+            
+            level.addFreshEntity(entity)
+            
+            net.drachi.cde.CDE.logger.info("Spawned ${pokemon.species.name} (Lvl $levelValue) at $pos")
+        } catch (e: Exception) {
+            net.drachi.cde.CDE.logger.error("Failed to spawn pokemon: ${entry.pokemon}", e)
         }
     }
 
@@ -671,6 +745,10 @@ object DungeonManager {
             if (generatorNext.stairPosition != null) {
                 instance.stairPositions[instance.currentFloor] = generatorNext.stairPosition!!
             }
+            
+            instance.pokemonSpawns.clear()
+            instance.pokemonSpawns.addAll(generatorNext.pokemonSpawns)
+            instance.lastPokemonSpawnTick = level.server.tickCount.toLong()
 
             applyFloorWeather(instance.config, instance.currentFloor)
 
@@ -900,6 +978,10 @@ object DungeonManager {
             if (generator.stairPosition != null) {
                 instance.stairPositions[1] = generator.stairPosition!!
             }
+            
+            instance.pokemonSpawns.clear()
+            instance.pokemonSpawns.addAll(generator.pokemonSpawns)
+            instance.lastPokemonSpawnTick = dungeonLevel.server.tickCount.toLong()
 
             applyFloorWeather(instance.config, 1)
 

@@ -49,9 +49,16 @@ class DungeonPickupItemGoal(private val pokemon: PokemonEntity) : Goal() {
         return targetItem != null && targetItem!!.isAlive && pokemon.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty
     }
 
+    private fun getNormalizedSpeed(): Double {
+        val baseSpeed = pokemon.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+        val safeBaseSpeed = maxOf(baseSpeed, 0.1)
+        val targetSpeed = 0.3 // 1.2 equivalent for typical mob
+        return targetSpeed / safeBaseSpeed
+    }
+
     override fun start() {
         if (targetItem != null) {
-            pokemon.navigation.moveTo(targetItem!!, 1.2)
+            pokemon.navigation.moveTo(targetItem!!, getNormalizedSpeed())
         }
     }
 
@@ -63,15 +70,35 @@ class DungeonPickupItemGoal(private val pokemon: PokemonEntity) : Goal() {
     override fun tick() {
         val item = targetItem ?: return
         
+        if (!item.isAlive || !pokemon.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty) {
+            targetItem = null
+            return
+        }
+
         pokemon.lookControl.setLookAt(item, 30.0f, 30.0f)
         
-        // Check distance to item
-        if (pokemon.distanceToSqr(item) <= 2.5) {
+        val distSq = pokemon.distanceToSqr(item)
+        if (distSq <= 2.0) { // Pickup range
             val stack = item.item.copy()
             
             // Equip it
             pokemon.setItemSlot(EquipmentSlot.MAINHAND, stack)
             item.discard()
+            targetItem = null
+            
+            // If owned, notify owner
+            val ownerId = pokemon.pokemon.getOwnerUUID()
+            if (ownerId != null) {
+                val p = pokemon.level().getPlayerByUUID(ownerId)
+                if (p != null && p is net.minecraft.server.level.ServerPlayer) {
+                    val message = net.minecraft.network.chat.Component.literal("Your ")
+                        .append(pokemon.name)
+                        .append(" picked up ")
+                        .append(stack.hoverName)
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW)
+                    p.sendSystemMessage(message)
+                }
+            }
             
             // Send blue chat message to dungeon party
             if (pokemon.level() is net.minecraft.server.level.ServerLevel) {

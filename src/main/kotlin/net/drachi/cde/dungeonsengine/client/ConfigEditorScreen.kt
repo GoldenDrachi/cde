@@ -403,6 +403,13 @@ class ConfigEditorScreen(private var config: DungeonConfig) : BaseOwoScreen<Flow
             ruleBox.child(createLabelInput("gui.cde.config.max_rooms", rule.config.maxRooms.toString()) { rule.config.maxRooms = it.toIntOrNull() ?: 10 })
             ruleBox.child(createLabelInput("gui.cde.config.prune_percent", rule.config.deadEndPrunePercent.toString()) { rule.config.deadEndPrunePercent = it.toIntOrNull() ?: 20 })
 
+            // Spawning Limits
+            ruleBox.child(createLabelInput("gui.cde.config.max_pokemon", rule.config.maxPokemon.toString()) { rule.config.maxPokemon = it.toIntOrNull() ?: 15 })
+            ruleBox.child(createLabelInput("gui.cde.config.pokemon_respawn_ticks", rule.config.pokemonRespawnTicks.toString()) { rule.config.pokemonRespawnTicks = it.toIntOrNull() ?: 60 })
+            ruleBox.child(createLabelInput("gui.cde.config.pokemon_spawn_on_generation", rule.config.pokemonSpawnOnGeneration.toString()) { rule.config.pokemonSpawnOnGeneration = it.toIntOrNull() ?: 3 })
+            ruleBox.child(createLabelInput("gui.cde.config.max_items", rule.config.maxItems.toString()) { rule.config.maxItems = it.toIntOrNull() ?: 5 })
+            ruleBox.child(createLabelInput("gui.cde.config.item_spawn_chance", rule.config.itemSpawnChance.toString()) { rule.config.itemSpawnChance = it.toDoubleOrNull() ?: 0.4 })
+
             // Palettes
             val palettesRow1 = Containers.horizontalFlow(Sizing.fill(100), Sizing.content())
             palettesRow1.child(createBlockPicker("block.cde.palette_a", rule.config.paletteA) { rule.config.paletteA = it; rebuildContent() }.margins(Insets.right(10)))
