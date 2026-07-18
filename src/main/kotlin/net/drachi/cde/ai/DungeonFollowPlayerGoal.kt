@@ -39,7 +39,6 @@ class DungeonFollowPlayerGoal(private val mob: PokemonEntity) : Goal() {
 
     override fun canContinueToUse(): Boolean {
         if (isStuck) return false
-        if (navigation.isDone) return false
         if (mob.distanceToSqr(owner!!) <= 2.25) return false
         return true
     }
@@ -63,16 +62,21 @@ class DungeonFollowPlayerGoal(private val mob: PokemonEntity) : Goal() {
         if (--timeToRecalcPath <= 0) {
             timeToRecalcPath = this.adjustedTickDelay(5)
             
-            // Adjust speed to match player's speed or sprint speed
-            var speedModifier = 2.0
+            val baseSpeed = mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED)
+            val safeBaseSpeed = maxOf(baseSpeed, 0.1)
+            
+            // Adjust absolute target speed
+            var targetSpeed = 0.3
             if (owner!!.isSprinting) {
-                speedModifier = 2.5
+                targetSpeed = 0.4
             }
             
             // If very far, move faster to catch up
             if (mob.distanceToSqr(owner!!) > 64.0) {
-                speedModifier = 3.0
+                targetSpeed = 0.5
             }
+            
+            val speedModifier = targetSpeed / safeBaseSpeed
 
             if (!mob.isLeashed && !mob.isPassenger) {
                 val path = navigation.createPath(owner!!, 0)

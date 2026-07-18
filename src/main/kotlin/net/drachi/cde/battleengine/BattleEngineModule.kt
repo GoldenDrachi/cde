@@ -61,6 +61,20 @@ object BattleEngineModule {
             net.drachi.cde.battleengine.battle.utility.CombatStateManager.clearVolatileStatuses(event.pokemon.uuid)
             net.drachi.cde.battleengine.battle.utility.CombatStateManager.clearStatStages(event.pokemon.uuid)
         }
+        
+        CobblemonEvents.BATTLE_STARTED_PRE.subscribe { event ->
+            if (net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.isRealtimeEnabled) {
+                val anyEntity = event.battle.actors.flatMap { it.pokemonList }.mapNotNull { it.entity }.firstOrNull()
+                if (anyEntity != null) {
+                    val dimId = anyEntity.level().dimension().location().toString()
+                    val dimState = net.drachi.cde.battleengine.battle.utility.SpawnManager.getDimensionHostility(dimId)
+                    if (dimState != net.drachi.cde.battleengine.battle.utility.HostilityState.PEACEFUL) {
+                        event.cancel()
+                        event.reason = net.minecraft.network.chat.Component.literal("Turn-based battling is disabled in real-time dimensions!")
+                    }
+                }
+            }
+        }
 
         CobblemonEvents.POKEMON_SENT_POST.subscribe { event ->
             val ownerUuid = event.pokemon.getOwnerUUID()

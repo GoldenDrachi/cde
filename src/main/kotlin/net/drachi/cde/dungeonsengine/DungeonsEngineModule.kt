@@ -141,6 +141,36 @@ CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             }
         }
 
+        com.cobblemon.mod.common.api.events.CobblemonEvents.LOOT_DROPPED.subscribe { event ->
+            val entity = event.entity
+            if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity) {
+                val dim = entity.level().dimension().location()
+                if (dim.namespace == "cde" && dim.path == "dungeon" && entity.pokemon.getOwnerUUID() == null) {
+                    val pos = entity.blockPosition()
+                    val instanceIndex = pos.z / 10000
+                    val expectedOriginZ = instanceIndex * 10000
+                    val dungeon = net.drachi.cde.dungeonsengine.data.DungeonManager.activeDungeons.values.find { it.originZ == expectedOriginZ }
+                    
+                    if (dungeon != null) {
+                        for (drop in event.drops) {
+                            if (drop is com.cobblemon.mod.common.api.drop.ItemDropEntry) {
+                                val itemReg = entity.level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ITEM).get(drop.item)
+                                if (itemReg != null) {
+                                    val count = drop.quantityRange?.random() ?: drop.quantity
+                                    dungeon.collectedLoot.add(net.minecraft.world.item.ItemStack(itemReg, count))
+                                }
+                            }
+                        }
+                    }
+                    val mainHandItem = entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
+                    if (!mainHandItem.isEmpty) {
+                        entity.spawnAtLocation(mainHandItem)
+                    }
+                    event.cancel()
+                }
+            }
+        }
+
         com.cobblemon.mod.common.api.events.CobblemonEvents.POKEMON_RECALL_PRE.subscribe { event ->
             val ownerId = event.pokemon.getOwnerUUID() ?: return@subscribe
             val entity = event.pokemon.entity ?: return@subscribe

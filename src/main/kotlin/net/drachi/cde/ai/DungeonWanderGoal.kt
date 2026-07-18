@@ -39,9 +39,16 @@ class DungeonWanderGoal(private val pokemon: PokemonEntity, private val speedMod
         return !pokemon.navigation.isDone && pokemon.isAlive
     }
 
+    private fun calculateSpeed(): Double {
+        val speedStat = pokemon.pokemon.speed.toDouble()
+        // Base 50 speed -> 1.0 modifier
+        val ratio = 0.5 + (speedStat / 100.0)
+        return speedModifier * ratio.coerceIn(0.6, 2.0)
+    }
+
     override fun start() {
         if (targetPos != null) {
-            pokemon.navigation.moveTo(targetPos!!.x, targetPos!!.y, targetPos!!.z, speedModifier)
+            pokemon.navigation.moveTo(targetPos!!.x, targetPos!!.y, targetPos!!.z, calculateSpeed())
         }
     }
 

@@ -36,13 +36,29 @@ data class ActiveDungeon(
     val stairPositions: MutableMap<Int, net.minecraft.core.BlockPos> = mutableMapOf(),
     val collectedLoot: MutableList<net.minecraft.world.item.ItemStack> = mutableListOf(),
     var lastActiveTime: Long = System.currentTimeMillis(),
-    var freezeTicks: Int = 0
+    var freezeTicks: Int = 0,
+    val loadedChunks: MutableSet<net.minecraft.world.level.ChunkPos> = mutableSetOf()
 )
 
 object DungeonManager {
     
     var nextInstanceIndex = 1
     val activeDungeons = mutableMapOf<UUID, ActiveDungeon>()
+    
+    class PendingGeneration(
+        val dungeon: ActiveDungeon,
+        val level: ServerLevel,
+        val playersToTeleport: List<net.minecraft.server.level.ServerPlayer>,
+        val bossBar: net.minecraft.server.level.ServerBossEvent?,
+        val chunksToForce: List<net.minecraft.world.level.ChunkPos>,
+        val tasks: MutableList<() -> Unit>,
+        val totalTasks: Int,
+        val onComplete: () -> Unit
+    ) {
+        var chunksForced = false
+    }
+    
+    val pendingGenerations = mutableListOf<PendingGeneration>()
     
     val pokemonSpawns = mutableListOf<net.minecraft.core.BlockPos>()
     val itemSpawns = mutableListOf<net.minecraft.core.BlockPos>()
@@ -296,7 +312,9 @@ object DungeonManager {
         
         // Find the lowest available Z coordinate that is a multiple of 10000
         var nextZ = 0
-        val usedZs = activeDungeons.values.map { it.originZ }.toSet()
+        val usedZs = mutableSetOf<Int>()
+        usedZs.addAll(activeDungeons.values.map { it.originZ })
+        usedZs.addAll(pendingGenerations.mapNotNull { it.dungeon?.originZ })
         while (usedZs.contains(nextZ)) {
             nextZ += 10000
         }
@@ -347,6 +365,9 @@ object DungeonManager {
         
         val toRemove = mutableListOf<UUID>()
         for ((id, dungeon) in activeDungeons) {
+            val isGenerating = pendingGenerations.any { it.dungeon?.instanceId == id }
+            if (isGenerating) continue
+
             if (dungeon.returnLocations.isEmpty()) {
                 CDE.logger.info("Dungeon $id is completely empty (all players left) and is being cleared.")
                 toRemove.add(id)
@@ -383,24 +404,106 @@ object DungeonManager {
             // Clear the terrain to make room for future dungeons
             val dungeonLevel = server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cde", "dungeon")))
             if (dungeonLevel != null) {
+                val tasks = mutableListOf<() -> Unit>()
+                val chunksToForce = mutableSetOf<net.minecraft.world.level.ChunkPos>()
+                
                 // Clear up to currentFloor + 1 (in case a generation was midway)
                 for (f in 1..dungeon.currentFloor + 1) {
                     val floorOriginZ = dungeon.originZ
                     val floorOriginX = dungeon.originX + ((f - 1) * 1000)
                     
-                    val dim = DungeonGrid.gridSizeForRooms(dungeon.config.getFloorConfig(f).maxRooms)
-                    val maxBlocks = dim * DungeonGrid.CELL_SIZE
+                    val dim = net.drachi.cde.dungeonsengine.generation.DungeonGrid.gridSizeForRooms(dungeon.config.getFloorConfig(f).maxRooms)
+                    val maxBlocks = dim * net.drachi.cde.dungeonsengine.generation.DungeonGrid.CELL_SIZE
                     val bounds = net.minecraft.world.phys.AABB(
                         floorOriginX.toDouble() - 50.0, -64.0, floorOriginZ.toDouble() - 50.0,
                         floorOriginX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, floorOriginZ.toDouble() + maxBlocks.toDouble() + 50.0
                     )
-                    clearRegion(dungeonLevel, bounds, dungeon.config, dungeon.config.getFloorConfig(f))
+                    
+                    val chunkMinX = bounds.minX.toInt() shr 4
+                    val chunkMaxX = bounds.maxX.toInt() shr 4
+                    val chunkMinZ = bounds.minZ.toInt() shr 4
+                    val chunkMaxZ = bounds.maxZ.toInt() shr 4
+                    for (cx in chunkMinX..chunkMaxX) {
+                        for (cz in chunkMinZ..chunkMaxZ) {
+                            chunksToForce.add(net.minecraft.world.level.ChunkPos(cx, cz))
+                        }
+                    }
+                    
+                    tasks.addAll(clearRegion(dungeonLevel, bounds, dungeon.config, dungeon.config.getFloorConfig(f)))
+                }
+                
+                val chunksList = chunksToForce.toList()
+                pendingGenerations.add(PendingGeneration(
+                    dungeon,
+                    dungeonLevel,
+                    emptyList(),
+                    null,
+                    chunksList,
+                    tasks,
+                    tasks.size
+                ) {
+                    // Un-force all chunks after deletion
+                    for (chunk in chunksList) {
+                        dungeonLevel.chunkSource.removeRegionTicket(net.minecraft.server.level.TicketType.FORCED, chunk, 2, chunk)
+                        dungeon.loadedChunks.remove(chunk)
+                    }
+                    CDE.logger.info("Finished wiping chunks for expired dungeon $id.")
+                })
+            }
+        }
+        
+        val iterator = pendingGenerations.iterator()
+        val tickEndTime = System.currentTimeMillis() + 15 // 15ms budget
+        
+        while (iterator.hasNext()) {
+            val gen = iterator.next()
+            if (!gen.chunksForced) {
+                gen.chunksForced = true
+                for (chunk in gen.chunksToForce) {
+                    gen.level.chunkSource.addRegionTicket(net.minecraft.server.level.TicketType.FORCED, chunk, 2, chunk)
+                    gen.dungeon?.loadedChunks?.add(chunk)
                 }
             }
+            
+            // Wait for chunks to load
+            var allLoaded = true
+            for (chunk in gen.chunksToForce) {
+                if (!gen.level.hasChunk(chunk.x, chunk.z)) {
+                    allLoaded = false
+                    break
+                }
+            }
+            
+            if (!allLoaded) continue
+            
+            // Process tasks within budget
+            while (gen.tasks.isNotEmpty() && System.currentTimeMillis() < tickEndTime) {
+                gen.tasks.removeFirst().invoke()
+            }
+            
+            // Update BossBar progress
+            if (gen.totalTasks > 0) {
+                val progress = 1.0f - (gen.tasks.size.toFloat() / gen.totalTasks.toFloat())
+                gen.bossBar?.progress = progress
+                
+                // Update BossBar text
+                val floorText = if (gen.dungeon != null) "Floor ${gen.dungeon.currentFloor}" else "Dungeon"
+                gen.bossBar?.name = net.minecraft.network.chat.Component.literal("Generating $floorText... ${(progress * 100).toInt()}%").withStyle(net.minecraft.ChatFormatting.GREEN)
+            }
+            
+            // Check completion
+            if (gen.tasks.isEmpty()) {
+                gen.onComplete.invoke()
+                gen.bossBar?.removeAllPlayers()
+                iterator.remove()
+            }
+            
+            if (System.currentTimeMillis() >= tickEndTime) break
         }
     }
 
-    fun clearRegion(level: ServerLevel, bounds: AABB, config: DungeonConfig?, floorConfig: FloorConfig? = null) {
+    fun clearRegion(level: ServerLevel, bounds: AABB, config: DungeonConfig?, floorConfig: FloorConfig? = null): MutableList<() -> Unit> {
+        val tasks = mutableListOf<() -> Unit>()
         val minX = bounds.minX.toInt()
         val maxX = bounds.maxX.toInt()
         val minZ = bounds.minZ.toInt()
@@ -415,24 +518,26 @@ object DungeonManager {
 
         for (cx in chunkMinX..chunkMaxX) {
             for (cz in chunkMinZ..chunkMaxZ) {
-                val chunk = level.getChunk(cx, cz)
-                val blockEntities = chunk.blockEntities.keys.toList()
-                blockEntities.forEach { chunk.removeBlockEntity(it) }
+                tasks.add {
+                    val chunk = level.getChunk(cx, cz)
+                    val blockEntities = chunk.blockEntities.keys.toList()
+                    blockEntities.forEach { chunk.removeBlockEntity(it) }
 
-                val startX = maxOf(minX, cx * 16)
-                val endX = minOf(maxX, cx * 16 + 15)
-                val startZ = maxOf(minZ, cz * 16)
-                val endZ = minOf(maxZ, cz * 16 + 15)
+                    val startX = maxOf(minX, cx * 16)
+                    val endX = minOf(maxX, cx * 16 + 15)
+                    val startZ = maxOf(minZ, cz * 16)
+                    val endZ = minOf(maxZ, cz * 16 + 15)
 
-                for (x in startX..endX) {
-                    for (z in startZ..endZ) {
-                        for (y in 0..255) {
-                            val pos = net.minecraft.core.BlockPos(x, y, z)
-                            if (!chunk.getBlockState(pos).isAir) {
-                                // 2 = update clients
-                                // 16 = no neighbor update (prevent cascades)
-                                // 32 = suppress drops
-                                level.setBlock(pos, airState, 50)
+                    for (x in startX..endX) {
+                        for (z in startZ..endZ) {
+                            for (y in 0..255) {
+                                val pos = net.minecraft.core.BlockPos(x, y, z)
+                                if (!chunk.getBlockState(pos).isAir) {
+                                    // 2 = update clients
+                                    // 16 = no neighbor update (prevent cascades)
+                                    // 32 = suppress drops
+                                    level.setBlock(pos, airState, 50)
+                                }
                             }
                         }
                     }
@@ -440,16 +545,20 @@ object DungeonManager {
             }
         }
 
-        // Clean up entities in the area (items, etc.) but not players
-        val entities = level.getEntities(null, bounds)
-        for (entity in entities) {
-            if (entity !is net.minecraft.world.entity.player.Player) {
-                if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity && entity.pokemon.getOwnerUUID() != null) {
-                    continue
+        tasks.add {
+            // Clean up entities in the area (items, etc.) but not players
+            val entities = level.getEntities(null, bounds)
+            for (entity in entities) {
+                if (entity !is net.minecraft.world.entity.player.Player) {
+                    if (entity is com.cobblemon.mod.common.entity.pokemon.PokemonEntity && entity.pokemon.getOwnerUUID() != null) {
+                        continue
+                    }
+                    entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED)
                 }
-                entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED)
             }
         }
+        
+        return tasks
     }
 
     fun getPartyName(player: net.minecraft.server.level.ServerPlayer): String {
@@ -508,82 +617,148 @@ object DungeonManager {
         instance.currentFloor++
         CDE.logger.info("Player ${player.name.string} descending to floor ${instance.currentFloor} of dungeon ${instance.instanceId}")
 
-        // Generate Floor Next
+        // Generate Floor Next async
         val generatorNext = net.drachi.cde.dungeonsengine.generation.DungeonGenerator(
             level,
             net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 64, instance.originZ),
             instance.config,
             instance.currentFloor
         )
-        generatorNext.generate()
-        val startPosFloorNext = generatorNext.startPosition ?: net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 65, instance.originZ)
-        instance.floorStartPositions[instance.currentFloor] = startPosFloorNext
-        if (generatorNext.stairPosition != null) {
-            instance.stairPositions[instance.currentFloor] = generatorNext.stairPosition!!
-        }
-
-        applyFloorWeather(instance.config, instance.currentFloor)
-
-        // Start position for the floor we are entering
-        val startPos = instance.floorStartPositions[instance.currentFloor] ?: net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 64 + 1, instance.originZ)
-
-        // Title text logic
-        val isDown = instance.config.stairDirection == StairDirection.DOWN
-        val transKey = if (isDown) "message.cde.floor_down" else "message.cde.floor_up"
-        val subtitleJson = "{\"translate\":\"$transKey\", \"with\":[\"${instance.currentFloor}\"], \"color\":\"yellow\"}"
-        val dungeonName = instance.config.id.split("_").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
-        val titleJson = "{\"text\":\"$dungeonName\", \"color\":\"gold\"}"
-
-        // Array of offsets to prevent entities from clipping into each other
-        val spawnOffsets = arrayOf(
-            Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
-            Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
-            Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
-        )
-        var spawnIndex = 0
-
-        // Freeze entities for configured ticks
-        freezeDungeon(instance.instanceId, net.drachi.cde.dungeonsengine.config.DungeonsEngineConfigManager.config.floorStartFreezeTicks)
-
-        // Teleport everyone and their Pokemon BEFORE wiping the old chunks
-        playersToTeleport.forEach { member ->
-            // Pick a spot for the player
-            val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-            spawnIndex++
-            val pPosRaw = startPos.offset(pOffset.first, 0, pOffset.second)
-            val pPos = findSafeSpawn(level, pPosRaw)
-            
-            // Teleport player (add 0.5 to center in block)
-            member.teleportTo(level, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
-
-            // Teleport out-of-ball party Pokemon & Enforce PMD mechanics
-            val indexRef = IntArray(1) { spawnIndex }
-            net.drachi.cde.dungeonsengine.data.DungeonPartyManager.enforceDungeonPartyState(member, level, startPos, spawnOffsets, indexRef)
-            spawnIndex = indexRef[0]
-
-            // Show Floor Title
-            member.server.commands.performPrefixedCommand(
-                member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
-                "title @s subtitle $subtitleJson"
-            )
-            member.server.commands.performPrefixedCommand(
-                member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
-                "title @s title $titleJson"
-            )
-        }
-
-        // Now that everyone is teleported, wipe the chunks of the floor they just left
-        val oldFloor = instance.currentFloor - 1
-        val floorOriginZ = instance.originZ
-        val floorOriginX = instance.originX + ((oldFloor - 1) * 1000)
         
-        val gridDim = net.drachi.cde.dungeonsengine.generation.DungeonGrid.gridSizeForRooms(instance.config.getFloorConfig(oldFloor).maxRooms)
+        val tasks = generatorNext.getRenderTasks().toMutableList()
+        val bossBar = net.minecraft.server.level.ServerBossEvent(
+            net.minecraft.network.chat.Component.literal("Generating Floor ${instance.currentFloor}... 0%").withStyle(net.minecraft.ChatFormatting.GREEN),
+            net.minecraft.world.BossEvent.BossBarColor.BLUE,
+            net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS
+        )
+        
+        for (member in playersToTeleport) {
+            bossBar.addPlayer(member as net.minecraft.server.level.ServerPlayer)
+        }
+        
+        // Calculate chunks to force load
+        val gridDim = net.drachi.cde.dungeonsengine.generation.DungeonGrid.gridSizeForRooms(instance.config.getFloorConfig(instance.currentFloor).maxRooms)
         val maxBlocks = gridDim * net.drachi.cde.dungeonsengine.generation.DungeonGrid.CELL_SIZE
         val bounds = net.minecraft.world.phys.AABB(
-            floorOriginX.toDouble() - 50.0, -64.0, floorOriginZ.toDouble() - 50.0,
-            floorOriginX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, floorOriginZ.toDouble() + maxBlocks.toDouble() + 50.0
+            (instance.originX + ((instance.currentFloor - 1) * 1000)).toDouble() - 50.0, -64.0, instance.originZ.toDouble() - 50.0,
+            (instance.originX + ((instance.currentFloor - 1) * 1000)).toDouble() + maxBlocks.toDouble() + 50.0, 319.0, instance.originZ.toDouble() + maxBlocks.toDouble() + 50.0
         )
-        clearRegion(level, bounds, instance.config, instance.config.getFloorConfig(oldFloor))
+        
+        val chunkMinX = bounds.minX.toInt() shr 4
+        val chunkMaxX = bounds.maxX.toInt() shr 4
+        val chunkMinZ = bounds.minZ.toInt() shr 4
+        val chunkMaxZ = bounds.maxZ.toInt() shr 4
+        
+        val chunksToForce = mutableListOf<net.minecraft.world.level.ChunkPos>()
+        for (cx in chunkMinX..chunkMaxX) {
+            for (cz in chunkMinZ..chunkMaxZ) {
+                chunksToForce.add(net.minecraft.world.level.ChunkPos(cx, cz))
+            }
+        }
+        
+        val totalTasks = tasks.size
+        
+        pendingGenerations.add(PendingGeneration(
+            instance,
+            level,
+            playersToTeleport as List<net.minecraft.server.level.ServerPlayer>,
+            bossBar,
+            chunksToForce,
+            tasks,
+            totalTasks
+        ) {
+            val startPosFloorNext = generatorNext.startPosition ?: net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 65, instance.originZ)
+            instance.floorStartPositions[instance.currentFloor] = startPosFloorNext
+            if (generatorNext.stairPosition != null) {
+                instance.stairPositions[instance.currentFloor] = generatorNext.stairPosition!!
+            }
+
+            applyFloorWeather(instance.config, instance.currentFloor)
+
+            // Start position for the floor we are entering
+            val startPos = instance.floorStartPositions[instance.currentFloor] ?: net.minecraft.core.BlockPos(instance.originX + ((instance.currentFloor - 1) * 1000), 64 + 1, instance.originZ)
+
+            // Title text logic
+            val isDown = instance.config.stairDirection == StairDirection.DOWN
+            val transKey = if (isDown) "message.cde.floor_down" else "message.cde.floor_up"
+            val subtitleJson = "{\"translate\":\"$transKey\", \"with\":[\"${instance.currentFloor}\"], \"color\":\"yellow\"}"
+            val dungeonName = instance.config.id.split("_").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
+            val titleJson = "{\"text\":\"$dungeonName\", \"color\":\"gold\"}"
+
+            // Array of offsets to prevent entities from clipping into each other
+            val spawnOffsets = arrayOf(
+                Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
+                Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
+                Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
+            )
+            var spawnIndex = 0
+
+            // Freeze entities for configured ticks
+            freezeDungeon(instance.instanceId, net.drachi.cde.dungeonsengine.config.DungeonsEngineConfigManager.config.floorStartFreezeTicks)
+
+            // Teleport everyone and their Pokemon BEFORE wiping the old chunks
+            playersToTeleport.forEach { member ->
+                // Pick a spot for the player
+                val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
+                spawnIndex++
+                val pPosRaw = startPos.offset(pOffset.first, 0, pOffset.second)
+                val pPos = findSafeSpawn(level, pPosRaw)
+                
+                // Teleport player (add 0.5 to center in block)
+                member.teleportTo(level, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
+
+                // Teleport out-of-ball party Pokemon & Enforce PMD mechanics
+                val indexRef = IntArray(1) { spawnIndex }
+                net.drachi.cde.dungeonsengine.data.DungeonPartyManager.enforceDungeonPartyState(member, level, startPos, spawnOffsets, indexRef)
+                spawnIndex = indexRef[0]
+
+                // Show Floor Title
+                member.server.commands.performPrefixedCommand(
+                    member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                    "title @s subtitle $subtitleJson"
+                )
+                member.server.commands.performPrefixedCommand(
+                    member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                    "title @s title $titleJson"
+                )
+            }
+
+            // Now that everyone is teleported, wipe the chunks of the floor they just left async!
+            val oldFloor = instance.currentFloor - 1
+            val floorOriginZ = instance.originZ
+            val floorOriginX = instance.originX + ((oldFloor - 1) * 1000)
+            
+            val gridDimOld = net.drachi.cde.dungeonsengine.generation.DungeonGrid.gridSizeForRooms(instance.config.getFloorConfig(oldFloor).maxRooms)
+            val maxBlocksOld = gridDimOld * net.drachi.cde.dungeonsengine.generation.DungeonGrid.CELL_SIZE
+            val boundsOld = net.minecraft.world.phys.AABB(
+                floorOriginX.toDouble() - 50.0, -64.0, floorOriginZ.toDouble() - 50.0,
+                floorOriginX.toDouble() + maxBlocksOld.toDouble() + 50.0, 319.0, floorOriginZ.toDouble() + maxBlocksOld.toDouble() + 50.0
+            )
+            
+            // Un-force the old chunks so they can be unloaded!
+            val chunkMinXOld = boundsOld.minX.toInt() shr 4
+            val chunkMaxXOld = boundsOld.maxX.toInt() shr 4
+            val chunkMinZOld = boundsOld.minZ.toInt() shr 4
+            val chunkMaxZOld = boundsOld.maxZ.toInt() shr 4
+            for (cx in chunkMinXOld..chunkMaxXOld) {
+                for (cz in chunkMinZOld..chunkMaxZOld) {
+                    val pos = net.minecraft.world.level.ChunkPos(cx, cz)
+                    level.chunkSource.removeRegionTicket(net.minecraft.server.level.TicketType.FORCED, pos, 2, pos)
+                    instance.loadedChunks.remove(pos)
+                }
+            }
+            
+            val clearTasks = clearRegion(level, boundsOld, instance.config, instance.config.getFloorConfig(oldFloor))
+            pendingGenerations.add(PendingGeneration(
+                instance,
+                level,
+                emptyList(),
+                null,
+                emptyList(),
+                clearTasks,
+                clearTasks.size
+            ) {})
+        })
     }
 
     fun findSafeSpawn(level: ServerLevel, centerPos: net.minecraft.core.BlockPos): net.minecraft.core.BlockPos {
@@ -671,68 +846,110 @@ object DungeonManager {
         
         val dungeonLevel = entity.server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cde", "dungeon")))!!
 
-        // Generate floor 1
+        // Generate floor 1 async
         val generator = net.drachi.cde.dungeonsengine.generation.DungeonGenerator(
             dungeonLevel,
             net.minecraft.core.BlockPos(instance.originX, 64, instance.originZ),
             instance.config,
             1
         )
-        generator.generate()
         
-        val startPos = generator.startPosition ?: net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
-        instance.floorStartPositions[1] = startPos
-        if (generator.stairPosition != null) {
-            instance.stairPositions[1] = generator.stairPosition!!
-        }
-
-        applyFloorWeather(instance.config, 1)
-
-        // Array of offsets to prevent entities from clipping into each other
-        val spawnOffsets = arrayOf(
-            Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
-            Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
-            Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
+        val tasks = generator.getRenderTasks().toMutableList()
+        val bossBar = net.minecraft.server.level.ServerBossEvent(
+            net.minecraft.network.chat.Component.literal("Generating Dungeon... 0%").withStyle(net.minecraft.ChatFormatting.GREEN),
+            net.minecraft.world.BossEvent.BossBarColor.BLUE,
+            net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS
         )
-        var spawnIndex = 0
-
-        // Freeze entities for configured ticks
-        freezeDungeon(instance.instanceId, net.drachi.cde.dungeonsengine.config.DungeonsEngineConfigManager.config.floorStartFreezeTicks)
-
-        playersToTeleport.forEach { member ->
-            member.portalCooldown = 100
-            
-            val safeReturn = getSafeOverworldReturn(entity.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)!!, member.blockPosition())
-            instance.returnLocations[member.uuid] = safeReturn
-            net.drachi.cde.dungeonsengine.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, safeReturn)
-            
-            // Unlock it for them!
-            net.drachi.cde.dungeonsengine.database.DatabaseManager.unlockDungeon(member.uuid, configId)
-            
-            val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
-            spawnIndex++
-            val pPosRaw = startPos.offset(pOffset.first, 0, pOffset.second)
-            val pPos = findSafeSpawn(dungeonLevel, pPosRaw)
-            
-            member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
-
-            // Teleport out-of-ball party Pokemon & Enforce PMD mechanics
-            val indexRef = IntArray(1) { spawnIndex }
-            net.drachi.cde.dungeonsengine.data.DungeonPartyManager.enforceDungeonPartyState(member, dungeonLevel, startPos, spawnOffsets, indexRef)
-            spawnIndex = indexRef[0]
-            
-            val isDown = instance.config.stairDirection == StairDirection.DOWN
-            val transKey = if (isDown) "message.cde.floor_down" else "message.cde.floor_up"
-            val dungeonName = instance.config.id.split("_").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
-            
-            member.server.commands.performPrefixedCommand(
-                member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
-                "title @s subtitle {\"translate\":\"$transKey\", \"with\":[\"1\"], \"color\":\"yellow\"}"
-            )
-            member.server.commands.performPrefixedCommand(
-                member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
-                "title @s title {\"text\":\"$dungeonName\", \"color\":\"gold\"}"
-            )
+        
+        for (member in playersToTeleport) {
+            bossBar.addPlayer(member as net.minecraft.server.level.ServerPlayer)
         }
+        
+        // Calculate chunks to force load
+        val gridDim = net.drachi.cde.dungeonsengine.generation.DungeonGrid.gridSizeForRooms(instance.config.getFloorConfig(1).maxRooms)
+        val maxBlocks = gridDim * net.drachi.cde.dungeonsengine.generation.DungeonGrid.CELL_SIZE
+        val bounds = net.minecraft.world.phys.AABB(
+            instance.originX.toDouble() - 50.0, -64.0, instance.originZ.toDouble() - 50.0,
+            instance.originX.toDouble() + maxBlocks.toDouble() + 50.0, 319.0, instance.originZ.toDouble() + maxBlocks.toDouble() + 50.0
+        )
+        
+        val chunkMinX = bounds.minX.toInt() shr 4
+        val chunkMaxX = bounds.maxX.toInt() shr 4
+        val chunkMinZ = bounds.minZ.toInt() shr 4
+        val chunkMaxZ = bounds.maxZ.toInt() shr 4
+        
+        val chunksToForce = mutableListOf<net.minecraft.world.level.ChunkPos>()
+        for (cx in chunkMinX..chunkMaxX) {
+            for (cz in chunkMinZ..chunkMaxZ) {
+                chunksToForce.add(net.minecraft.world.level.ChunkPos(cx, cz))
+            }
+        }
+        
+        val totalTasks = tasks.size
+        
+        pendingGenerations.add(PendingGeneration(
+            instance,
+            dungeonLevel,
+            playersToTeleport as List<net.minecraft.server.level.ServerPlayer>,
+            bossBar,
+            chunksToForce,
+            tasks,
+            totalTasks
+        ) {
+            val startPos = generator.startPosition ?: net.minecraft.core.BlockPos(instance.originX, 65, instance.originZ)
+            instance.floorStartPositions[1] = startPos
+            if (generator.stairPosition != null) {
+                instance.stairPositions[1] = generator.stairPosition!!
+            }
+
+            applyFloorWeather(instance.config, 1)
+
+            // Array of offsets to prevent entities from clipping into each other
+            val spawnOffsets = arrayOf(
+                Pair(0, 0), Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1),
+                Pair(1, 1), Pair(-1, 1), Pair(1, -1), Pair(-1, -1),
+                Pair(2, 0), Pair(-2, 0), Pair(0, 2), Pair(0, -2)
+            )
+            var spawnIndex = 0
+
+            // Freeze entities for configured ticks
+            freezeDungeon(instance.instanceId, net.drachi.cde.dungeonsengine.config.DungeonsEngineConfigManager.config.floorStartFreezeTicks)
+
+            playersToTeleport.forEach { member ->
+                member.portalCooldown = 100
+                
+                val safeReturn = getSafeOverworldReturn(entity.server.getLevel(net.minecraft.world.level.Level.OVERWORLD)!!, member.blockPosition())
+                instance.returnLocations[member.uuid] = safeReturn
+                net.drachi.cde.dungeonsengine.database.DatabaseManager.saveDungeonPlayer(instance.instanceId, member.uuid, safeReturn)
+                
+                // Unlock it for them!
+                net.drachi.cde.dungeonsengine.database.DatabaseManager.unlockDungeon(member.uuid, configId)
+                
+                val pOffset = spawnOffsets[spawnIndex % spawnOffsets.size]
+                spawnIndex++
+                val pPosRaw = startPos.offset(pOffset.first, 0, pOffset.second)
+                val pPos = findSafeSpawn(dungeonLevel, pPosRaw)
+                
+                member.teleportTo(dungeonLevel, pPos.x.toDouble() + 0.5, pPos.y.toDouble(), pPos.z.toDouble() + 0.5, member.yRot, member.xRot)
+
+                // Teleport out-of-ball party Pokemon & Enforce PMD mechanics
+                val indexRef = IntArray(1) { spawnIndex }
+                net.drachi.cde.dungeonsengine.data.DungeonPartyManager.enforceDungeonPartyState(member, dungeonLevel, startPos, spawnOffsets, indexRef)
+                spawnIndex = indexRef[0]
+                
+                val isDown = instance.config.stairDirection == StairDirection.DOWN
+                val transKey = if (isDown) "message.cde.floor_down" else "message.cde.floor_up"
+                val dungeonName = instance.config.id.split("_").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
+                
+                member.server.commands.performPrefixedCommand(
+                    member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                    "title @s subtitle {\"translate\":\"$transKey\", \"with\":[\"1\"], \"color\":\"yellow\"}"
+                )
+                member.server.commands.performPrefixedCommand(
+                    member.createCommandSourceStack().withPermission(2).withSuppressedOutput(),
+                    "title @s title {\"text\":\"$dungeonName\", \"color\":\"gold\"}"
+                )
+            }
+        })
     }
 }

@@ -84,7 +84,9 @@ class ProjectileAttack : AttackStrategy {
         val caster = ctx.caster
         val world = ctx.world
         val box = caster.boundingBox.inflate(phase.range.toDouble())
-        val found = world.getEntitiesOfClass(LivingEntity::class.java, box) { it.isAlive() && it != caster }
+        val found = world.getEntitiesOfClass(LivingEntity::class.java, box) { 
+            it.isAlive() && it != caster && (phase.hitsFriendlies || !net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(caster, it)) 
+        }
         val lookVec = caster.lookAngle
 
         var bestTarget: LivingEntity? = null
@@ -132,7 +134,9 @@ class ProjectileAttack : AttackStrategy {
             }
 
             val box = AABB(currentPos.x - 1.5, currentPos.y - 1.5, currentPos.z - 1.5, currentPos.x + 1.5, currentPos.y + 1.5, currentPos.z + 1.5)
-            val found = world.getEntitiesOfClass(LivingEntity::class.java, box) { it.isAlive() && it != caster }
+            val found = world.getEntitiesOfClass(LivingEntity::class.java, box) { 
+                it.isAlive() && it != caster && (phase.hitsFriendlies || !net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(caster, it)) 
+            }
             if (found.isNotEmpty()) {
                 hitPos = currentPos
                 hit = true

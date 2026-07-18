@@ -32,16 +32,23 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
             }
         }
 
-        if (target != null && target!!.isAlive) return true
+        if (target != null && (!target!!.isAlive || net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(pokemonEntity, target!!) || target!!.distanceToSqr(pokemonEntity) > 1024.0)) {
+            target = null
+            pokemonEntity.target = null
+        }
         
-        target = pokemonEntity.target ?: pokemonEntity.brain.getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET).orElse(null)
-        
-        if (target == null || !target!!.isAlive) {
-            // Check lastHurtByMob as a fallback (for neutral/pet Pokemon that got attacked)
-            val attacker = pokemonEntity.lastHurtByMob
-            if (attacker != null && attacker.isAlive) {
-                target = attacker
+        if (target == null) {
+            var potentialTarget = pokemonEntity.target ?: pokemonEntity.brain.getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET).orElse(null)
+            
+            if (potentialTarget == null || !potentialTarget.isAlive || net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(pokemonEntity, potentialTarget)) {
+                val attacker = pokemonEntity.lastHurtByMob
+                if (attacker != null && attacker.isAlive && !net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(pokemonEntity, attacker)) {
+                    potentialTarget = attacker
+                } else {
+                    potentialTarget = null
+                }
             }
+            target = potentialTarget
         }
         
         val runtimeState = net.drachi.cde.battleengine.battle.utility.SpawnManager.getEntityHostility(pokemonEntity)
@@ -52,18 +59,20 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
                          net.drachi.cde.battleengine.battle.utility.SpawnManager.getDimensionHostility(pokemonEntity.level().dimension().location().toString()) == net.drachi.cde.battleengine.battle.utility.HostilityState.HOSTILE)
         
         val ownerId = pokemonEntity.pokemon.getOwnerUUID()
-        if (ownerId != null && (target == null || !target!!.isAlive)) {
+        if (ownerId != null && target == null) {
             val owner = pokemonEntity.level().server?.playerList?.getPlayer(ownerId)
             if (owner != null) {
                 val ownerTarget = owner.lastHurtMob ?: owner.lastHurtByMob
-                if (ownerTarget != null && ownerTarget.isAlive) {
+                if (ownerTarget != null && ownerTarget.isAlive && !net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(pokemonEntity, ownerTarget)) {
                     target = ownerTarget
                 }
             }
         }
         
-        if (target == null || !target!!.isAlive) {
-            val isDungeon = pokemonEntity.level().dimension().location().namespace == "cde" && pokemonEntity.level().dimension().location().path == "dungeon"
+        if (target == null) {
+            val dimId = pokemonEntity.level().dimension().location().toString()
+            val dimState = net.drachi.cde.battleengine.battle.utility.SpawnManager.getDimensionHostility(dimId)
+            val isHostileDimension = dimState == net.drachi.cde.battleengine.battle.utility.HostilityState.HOSTILE
             
             if (isHostile) {
                 // Wild Hostile Pokemon: scan for players and owned pokemon
@@ -73,13 +82,16 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
                 
                 val allValid = (players + ownedPokemon).filter { 
                     it.isAlive && it != pokemonEntity && 
-                    !(it is Player && (it.isCreative || it.isSpectator))
+                    !(it is Player && (it.isCreative || it.isSpectator)) &&
+                    !net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(pokemonEntity, it)
                 }
                 target = allValid.minByOrNull { it.distanceToSqr(pokemonEntity) }
-            } else if (ownerId != null && isDungeon) {
-                // Owned Pokemon in Dungeon: scan for wild pokemon
+            } else if (ownerId != null && isHostileDimension) {
+                // Owned Pokemon in Hostile Dimension: scan for wild pokemon
                 val searchBox = pokemonEntity.boundingBox.inflate(16.0)
-                val wildPokemon = pokemonEntity.level().getEntitiesOfClass(PokemonEntity::class.java, searchBox) { it.pokemon.getOwnerUUID() == null && it.isAlive }
+                val wildPokemon = pokemonEntity.level().getEntitiesOfClass(PokemonEntity::class.java, searchBox) { 
+                    it.pokemon.getOwnerUUID() == null && it.isAlive && !net.drachi.cde.battleengine.api.BattleEngineApi.isFriendly(pokemonEntity, it)
+                }
                 target = wildPokemon.minByOrNull { it.distanceToSqr(pokemonEntity) }
             }
         }
