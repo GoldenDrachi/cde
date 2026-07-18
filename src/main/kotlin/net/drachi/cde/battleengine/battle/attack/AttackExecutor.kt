@@ -457,7 +457,7 @@ object AttackExecutor {
             net.drachi.cde.battleengine.battle.ability.AbilityExecutor.executeOnHitReceived(defenderStats, targetEntity, ctx.caster, damage)
             net.drachi.cde.battleengine.battle.ability.AbilityExecutor.executeOnDamageDealt(ctx.pokemonStats, ctx.caster, targetEntity, damage)
 
-            if (net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.debugLogging) {
+            if (net.drachi.cde.config.ConfigManager.globalConfig.debugLogging) {
                 CDE.logger.info("Hit ${defenderStats.species.name} for $damage damage! HP: ${defenderStats.currentHealth}/${defenderStats.maxHealth}")
             }
             if (ctx.showLog) {
@@ -552,7 +552,7 @@ object AttackExecutor {
                 net.drachi.cde.battleengine.battle.ability.AbilityExecutor.executeOnHitReceived(defenderStats, targetEntity, ctx.caster, damage)
                 net.drachi.cde.battleengine.battle.ability.AbilityExecutor.executeOnDamageDealt(ctx.pokemonStats, ctx.caster, targetEntity, damage)
 
-                if (net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.debugLogging) {
+                if (net.drachi.cde.config.ConfigManager.globalConfig.debugLogging) {
                     CDE.logger.info("Hit Player ${targetEntity.name.string}'s ${defenderStats.species.name} for $damage damage! HP: ${defenderStats.currentHealth}/${defenderStats.maxHealth}")
                 }
                 if (ctx.showLog) {
@@ -611,7 +611,7 @@ object AttackExecutor {
         targetEntity.hurt(if (ctx.caster is net.minecraft.world.entity.player.Player) ctx.caster.damageSources().playerAttack(ctx.caster) else ctx.caster.damageSources().mobAttack(ctx.caster), genericDamage)
         ctx.world.playSound(null, targetEntity.blockPosition(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0f, 1.0f)
 
-        if (net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.debugLogging) {
+        if (net.drachi.cde.config.ConfigManager.globalConfig.debugLogging) {
             CDE.logger.info("Hit Generic Entity ${targetEntity.name.string} for $genericDamage vanilla damage!")
         }
         if (ctx.showLog) {
@@ -627,7 +627,7 @@ object AttackExecutor {
         val expGained = (expYield * level) / 7
 
         if (expGained > 0) {
-            if (net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.debugLogging) {
+            if (net.drachi.cde.config.ConfigManager.globalConfig.debugLogging) {
                 CDE.logger.info("EXP Calc: ($expYield Base Yield * $level Level) / 7 = $expGained EXP gained by ${ctx.pokemonStats.species.name}")
             }
             ctx.pokemonStats.addExperienceWithPlayer((ctx.caster as? net.minecraft.server.level.ServerPlayer) ?: return, object : com.cobblemon.mod.common.api.pokemon.experience.ExperienceSource {}, expGained)

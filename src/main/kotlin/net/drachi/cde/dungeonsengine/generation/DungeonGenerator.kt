@@ -379,9 +379,14 @@ class DungeonGenerator(
             }
             
             val pokemon = species.create(levelValue)
+            pokemon.persistentData.putBoolean("cde_spawned", true)
+            pokemon.persistentData.putString("cde_hostility", "hostile")
+            
             val entity = com.cobblemon.mod.common.entity.pokemon.PokemonEntity(level, pokemon)
             entity.setPos(pos.x + 0.5, pos.y.toDouble(), pos.z + 0.5)
             entity.addTag("cde_spawned")
+            entity.setPersistenceRequired()
+            
             level.addFreshEntity(entity)
             
             CDE.logger.info("Spawned ${pokemon.species.name} (Lvl $levelValue) at $pos")

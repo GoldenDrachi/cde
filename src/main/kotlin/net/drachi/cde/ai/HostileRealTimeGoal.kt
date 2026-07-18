@@ -45,7 +45,7 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
         }
         
         val runtimeState = net.drachi.cde.battleengine.battle.utility.SpawnManager.getEntityHostility(pokemonEntity)
-        val savedHostility = pokemonEntity.pokemon.persistentData.getString("cdbe_hostility")
+        val savedHostility = pokemonEntity.pokemon.persistentData.getString("cde_hostility")
         val isHostile = runtimeState == net.drachi.cde.battleengine.battle.utility.HostilityState.HOSTILE || 
                         savedHostility == "hostile" || 
                         (runtimeState == null && savedHostility.isEmpty() && 
@@ -62,17 +62,26 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
             }
         }
         
-        if ((target == null || !target!!.isAlive) && isHostile) {
-            // Proactive scan for hostile Pokemon — look for players and owned pokemon
-            val searchBox = pokemonEntity.boundingBox.inflate(16.0)
-            val players = pokemonEntity.level().getEntitiesOfClass(net.minecraft.world.entity.player.Player::class.java, searchBox)
-            val ownedPokemon = pokemonEntity.level().getEntitiesOfClass(PokemonEntity::class.java, searchBox) { it.pokemon.getOwnerUUID() != null }
+        if (target == null || !target!!.isAlive) {
+            val isDungeon = pokemonEntity.level().dimension().location().namespace == "cde" && pokemonEntity.level().dimension().location().path == "dungeon"
             
-            val allValid = (players + ownedPokemon).filter { 
-                it.isAlive && it != pokemonEntity && 
-                !(it is Player && (it.isCreative || it.isSpectator))
+            if (isHostile) {
+                // Wild Hostile Pokemon: scan for players and owned pokemon
+                val searchBox = pokemonEntity.boundingBox.inflate(16.0)
+                val players = pokemonEntity.level().getEntitiesOfClass(net.minecraft.world.entity.player.Player::class.java, searchBox)
+                val ownedPokemon = pokemonEntity.level().getEntitiesOfClass(PokemonEntity::class.java, searchBox) { it.pokemon.getOwnerUUID() != null }
+                
+                val allValid = (players + ownedPokemon).filter { 
+                    it.isAlive && it != pokemonEntity && 
+                    !(it is Player && (it.isCreative || it.isSpectator))
+                }
+                target = allValid.minByOrNull { it.distanceToSqr(pokemonEntity) }
+            } else if (ownerId != null && isDungeon) {
+                // Owned Pokemon in Dungeon: scan for wild pokemon
+                val searchBox = pokemonEntity.boundingBox.inflate(16.0)
+                val wildPokemon = pokemonEntity.level().getEntitiesOfClass(PokemonEntity::class.java, searchBox) { it.pokemon.getOwnerUUID() == null && it.isAlive }
+                target = wildPokemon.minByOrNull { it.distanceToSqr(pokemonEntity) }
             }
-            target = allValid.minByOrNull { it.distanceToSqr(pokemonEntity) }
         }
         
         val canUse = target != null && target!!.isAlive
@@ -102,7 +111,8 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
         
         if (validRtMoves.isEmpty()) {
             val fallbackMove = MoveRegistry.getMove("cobblemon:neutral_attack")
-            val dummyTemplate = moveSet.firstOrNull()?.template ?: com.cobblemon.mod.common.api.moves.Moves.getByName("cobblemon:tackle")
+            val dummyTemplate = com.cobblemon.mod.common.api.moves.Moves.getByName("tackle")
+            
             if (fallbackMove != null && dummyTemplate != null) {
                 // Create a dummy move to pass the template to the AttackExecutor
                 val dummyCobblemonMove = com.cobblemon.mod.common.api.moves.Move(dummyTemplate, 0, 0)
@@ -154,83 +164,69 @@ class HostileRealTimeGoal(private val pokemonEntity: PokemonEntity) : Goal() {
         }
         pokemonEntity.lookControl.setLookAt(currentTarget, 30.0f, 30.0f)
 
-        if (pokemonEntity.tickCount % 20 == 0) println("HostileRealTimeGoal ticking! target: ${currentTarget.name.string}, cooldown: $cooldownTicks, selected move: ${selectedRtMove?.cobblemonMoveId}")
-
         if (selectedRtMove == null || selectedCobblemonMove == null) {
             pickNewMove()
-            if (selectedRtMove == null) {
-                // Fallback to basic follow if no moves
-                pokemonEntity.navigation.moveTo(currentTarget, 1.0)
-                return
-            }
         }
         
-        val rtMove = selectedRtMove!!
-        val firstPhase = rtMove.phases.firstOrNull() ?: return
-        val range = firstPhase.range
+        // Disable Cobblemon brain's walk target so it doesn't fight our navigation
+        pokemonEntity.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
+        
+        if (cooldownTicks > 0) cooldownTicks--
+        
+        val rtMove = selectedRtMove
+        val firstPhase = rtMove?.phases?.firstOrNull()
+        val range = firstPhase?.range ?: 2.0f
         val minRange = (pokemonEntity.bbWidth / 2.0f + currentTarget.bbWidth / 2.0f + range)
         val rangeSq = minRange * minRange
         
         val distSq = pokemonEntity.distanceToSqr(currentTarget)
         
-        // Disable Cobblemon brain's walk target so it doesn't fight our navigation
-        pokemonEntity.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
-        
-        // Must be in range to fire, but if on cooldown, don't move into melee range if it's a ranged attack
-        if (cooldownTicks > 0) {
-            cooldownTicks--
-            // If we are already in range for the *current* queued move, stop so we don't pathfind into melee
-            if (distSq <= rangeSq) {
-                pokemonEntity.navigation.stop()
-            } else {
-                pokemonEntity.navigation.moveTo(currentTarget, 1.3)
-            }
-            return
-        }
-
-        // Move into range
         if (distSq > rangeSq) {
             pokemonEntity.navigation.moveTo(currentTarget, 1.3)
-            if (pokemonEntity.tickCount % 20 == 0) println("HostileRealTimeGoal out of range: distSq=$distSq, rangeSq=$rangeSq")
             return
         } else {
             pokemonEntity.navigation.stop()
         }
 
-        // Must have line of sight for ranged attacks
-        if (firstPhase.attackType == AttackTypeEnum.PROJECTILE || firstPhase.attackType == AttackTypeEnum.BEAM) {
-            if (!pokemonEntity.hasLineOfSight(currentTarget)) return
-            
-            // Snap perfectly to target eyes for precise projectiles
-            val eyePos = currentTarget.eyePosition
-            pokemonEntity.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, eyePos)
-            pokemonEntity.xRotO = pokemonEntity.xRot
-            pokemonEntity.yRotO = pokemonEntity.yRot
-            pokemonEntity.yHeadRot = pokemonEntity.yRot
-            pokemonEntity.yHeadRotO = pokemonEntity.yRot
-        }
+        if (cooldownTicks <= 0) {
+            if (rtMove != null && selectedCobblemonMove != null) {
+                // Must have line of sight for ranged attacks
+                if (firstPhase != null && (firstPhase.attackType == AttackTypeEnum.PROJECTILE || firstPhase.attackType == AttackTypeEnum.BEAM)) {
+                    if (!pokemonEntity.hasLineOfSight(currentTarget)) return
+                    
+                    // Snap perfectly to target eyes for precise projectiles
+                    val eyePos = currentTarget.eyePosition
+                    pokemonEntity.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, eyePos)
+                    pokemonEntity.xRotO = pokemonEntity.xRot
+                    pokemonEntity.yRotO = pokemonEntity.yRot
+                    pokemonEntity.yHeadRot = pokemonEntity.yRot
+                    pokemonEntity.yHeadRotO = pokemonEntity.yRot
+                }
 
-        // Check charging/recharging
-        if (DelayedActionManager.isCharging(pokemonEntity.uuid) || DelayedActionManager.isRecharging(pokemonEntity.uuid)) {
-            if (pokemonEntity.tickCount % 20 == 0) println("HostileRealTimeGoal charging/recharging")
-            return
-        }
+                // Check charging/recharging
+                if (DelayedActionManager.isCharging(pokemonEntity.uuid) || DelayedActionManager.isRecharging(pokemonEntity.uuid)) {
+                    return
+                }
 
-        // Execute it!
-        println("HostileRealTimeGoal FIRING MOVE ${rtMove.cobblemonMoveId} AT ${currentTarget.name.string}")
-        var currentDelayTicks = 0L
-        val executionId = java.util.UUID.randomUUID()
-        
-        for (phase in rtMove.phases) {
-            currentDelayTicks += phase.chargeupTicks
-            DelayedActionManager.queuePhase(executionId, pokemonEntity, pokemonEntity.pokemon, rtMove, selectedCobblemonMove!!.template, phase, currentDelayTicks)
-            val durationTicks = (phase.attackDurationTurns * net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.turnToSecondsRatio * 20).toLong()
-            currentDelayTicks += durationTicks
-        }
+                // Execute it!
+                var currentDelayTicks = 0L
+                val executionId = java.util.UUID.randomUUID()
+                
+                for (phase in rtMove.phases) {
+                    currentDelayTicks += phase.chargeupTicks
+                    DelayedActionManager.queuePhase(executionId, pokemonEntity, pokemonEntity.pokemon, rtMove, selectedCobblemonMove!!.template, phase, currentDelayTicks)
+                    val durationTicks = (phase.attackDurationTurns * net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.turnToSecondsRatio * 20).toLong()
+                    currentDelayTicks += durationTicks
+                }
 
-        // Set cooldown and pick next move
-        cooldownTicks = (rtMove.cooldownTurns * net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.turnToSecondsRatio * 20).toInt()
-        if (cooldownTicks <= 0) cooldownTicks = 40
-        pickNewMove()
+                cooldownTicks = (rtMove.cooldownTurns * net.drachi.cde.battleengine.config.BattleEngineConfigManager.config.turnToSecondsRatio * 20).toInt()
+                if (cooldownTicks <= 0) cooldownTicks = 40
+                pickNewMove()
+            } else {
+                // Fallback basic attack
+                pokemonEntity.doHurtTarget(currentTarget)
+                cooldownTicks = 20
+            }
+        }
     }
 }

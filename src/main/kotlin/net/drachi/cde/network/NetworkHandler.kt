@@ -67,7 +67,17 @@ object NetworkHandler {
             val player = context.player() as? ServerPlayer ?: return@registerServerbound
             player.server.execute {
                 if (modules.dungeonsEnabled) {
-                    PlayerHazardStateManager.setSelectedSlot(player.uuid, payload.slotIndex)
+                    val oldSlot = net.drachi.cde.dungeonsengine.mechanics.PlayerHazardStateManager.getSelectedSlot(player.uuid)
+                    val newSlot = payload.slotIndex
+                    
+                    val dim = player.level().dimension().location()
+                    val inDungeon = dim.namespace == "cde" && dim.path == "dungeon"
+                    
+                    if (inDungeon && oldSlot != newSlot && oldSlot != -1) {
+                        net.drachi.cde.dungeonsengine.data.DungeonPartyManager.performSwap(player, oldSlot, newSlot)
+                    } else {
+                        net.drachi.cde.dungeonsengine.mechanics.PlayerHazardStateManager.setSelectedSlot(player.uuid, payload.slotIndex)
+                    }
                 }
                 if (modules.battleEngineEnabled) {
                     net.drachi.cde.battleengine.battle.attack.PlayerCombatManager.setActivePokemon(player, payload.slotIndex)
@@ -94,7 +104,7 @@ object NetworkHandler {
             CHANNEL.registerServerbound(JoinDungeonRequestPayload::class.java) { payload, context ->
                 val player = context.player() as? ServerPlayer ?: return@registerServerbound
                 player.server.execute {
-                    net.drachi.cde.dungeonsengine.data.DungeonManager.joinDungeon(player, payload.dungeonId, bypassUnlockCheck = false)
+                    net.drachi.cde.dungeonsengine.data.DungeonPartyManager.initiateDungeonJoin(player, payload.dungeonId)
                 }
             }
         }

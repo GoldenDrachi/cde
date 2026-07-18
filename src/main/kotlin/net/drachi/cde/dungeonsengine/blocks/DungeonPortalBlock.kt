@@ -59,7 +59,7 @@ class DungeonPortalBlock(properties: Properties) : Block(properties), EntityBloc
                 return
             } else {
                 // Specific portal -> instant join & bypass unlock check
-                net.drachi.cde.dungeonsengine.data.DungeonManager.joinDungeon(entity, configId, bypassUnlockCheck = true)
+                net.drachi.cde.dungeonsengine.data.DungeonPartyManager.initiateDungeonJoin(entity, configId, bypassUnlockCheck = true)
             }
         }
     }
