@@ -1,5 +1,5 @@
 {
-    "cobblemon_move_id":  "cobblemon:agility",
+    "cobblemon_move_id":  "cobblemon:autotomize",
     "cooldown_turns":  4.0,
     "phases":  [
                    {

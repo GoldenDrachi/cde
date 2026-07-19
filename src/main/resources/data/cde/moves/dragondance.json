@@ -1,5 +1,5 @@
 {
-    "cobblemon_move_id":  "cobblemon:agility",
+    "cobblemon_move_id":  "cobblemon:dragondance",
     "cooldown_turns":  4.0,
     "phases":  [
                    {
@@ -9,7 +9,12 @@
                        "range":  0.0,
                        "status_effects":  [
                                               {
-                                                  "type":  "speed_up_2",
+                                                  "type":  "attack_up",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              },
+                                              {
+                                                  "type":  "speed_up",
                                                   "duration_turns":  20.0,
                                                   "chance": 100
                                               }
