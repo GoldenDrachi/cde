@@ -1,17 +1,18 @@
 {
-    "cobblemon_move_id":  "cobblemon:knockoff",
-    "cooldown_turns":  3.0,
-    "phases":  [
-                   {
-                       "attack_type":  "MELEE",
-                       "base_power":  65,
-                       "accuracy":  100,
-                       "range":  3.0,
-                       "hits_friendlies":  false,
-                       "particles":  {
-                                         "type":  "crit",
-                                         "count":  5
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:knockoff",
+  "cooldown_turns": 3.0,
+  "phases": [
+    {
+      "attack_type": "MELEE",
+      "base_power": 65,
+      "accuracy": 100,
+      "range": 3.0,
+      "hits_friendlies": false,
+      "particles": {
+        "type": "cobblemon:hit",
+        "count": 5,
+        "bind_to_target": true
+      }
+    }
+  ]
 }

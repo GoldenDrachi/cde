@@ -14,6 +14,20 @@ object HealingEventHandler {
     fun register() {
         ServerLifecycleEvents.SERVER_STARTED.register { server ->
             serverInstance = server
+            println("--- SpawnSnowstormParticlePacket ---")
+            com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormParticlePacket::class.java.constructors.forEach {
+                println(it)
+            }
+            com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormParticlePacket::class.java.methods.forEach {
+                println(it)
+            }
+            println("--- SpawnSnowstormEntityParticlePacket ---")
+            com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormEntityParticlePacket::class.java.constructors.forEach {
+                println(it)
+            }
+            com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormEntityParticlePacket::class.java.methods.forEach {
+                println(it)
+            }
         }
         
         ServerLifecycleEvents.SERVER_STOPPED.register {

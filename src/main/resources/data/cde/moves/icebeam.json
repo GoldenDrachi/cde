@@ -1,24 +1,41 @@
 {
-    "cobblemon_move_id":  "cobblemon:icebeam",
-    "cooldown_turns":  5.0,
-    "phases":  [
-                   {
-                       "attack_type":  "BEAM",
-                       "base_power":  90,
-                       "accuracy":  100,
-                       "range":  15.0,
-                       "status_effects":  [
-                                              {
-                                                  "type":  "stun",
-                                                  "duration_turns":  15.0,
-                                                  "chance": 10
-                                              }
-                                          ],
-                       "hits_friendlies":  false,
-                       "particles":  {
-                                         "type":  "splash",
-                                         "count":  10
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:icebeam",
+  "cooldown_turns": 5.0,
+  "phases": [
+    {
+      "chargeup_ticks": 10,
+      "particles": {
+        "type": "cobblemon:icebeam_actor",
+        "count": 1,
+        "bind_to_caster": true,
+        "bind_to_target": true
+      }
+    },
+    {
+      "attack_type": "BEAM",
+      "base_power": 90,
+      "accuracy": 100,
+      "range": 15.0,
+      "status_effects": [
+        {
+          "type": "stun",
+          "duration_turns": 15.0,
+          "chance": 10
+        }
+      ],
+      "hits_friendlies": false,
+      "particles": {
+        "type": "cobblemon:icebeam_target",
+        "count": 1,
+        "bind_to_target": true
+      },
+      "extra_particles": [
+        {
+          "type": "cobblemon:icebeam_targetburst",
+          "count": 1,
+          "bind_to_target": true
+        }
+      ]
+    }
+  ]
 }

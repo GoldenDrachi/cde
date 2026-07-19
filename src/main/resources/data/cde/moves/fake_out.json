@@ -1,29 +1,29 @@
 {
-    "cobblemon_move_id":  "cobblemon:fakeout",
-    "cooldown_turns":  3.0,
-    "phases":  [
-                   {
-                       "attack_type":  "DASH",
-                       "base_power":  40,
-                       "accuracy":  100,
-                       "range":  0.0,
-                       "mobility_data":  {
-                                             "dash_speed":  4.0,
-                                             "dash_range":  6.0,
-                                             "stop_on_hit":  true
-                                         },
-                       "status_effects":  [
-                                              {
-                                                  "type":  "stun",
-                                                  "duration_turns":  1.0,
-                                                  "chance": 100,
-                                                  "immunity_cooldown_turns":  60.0
-                                              }
-                                          ],
-                       "particles":  {
-                                         "type":  "explosion",
-                                         "count":  1
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:fakeout",
+  "cooldown_turns": 3.0,
+  "phases": [
+    {
+      "attack_type": "DASH",
+      "base_power": 40,
+      "accuracy": 100,
+      "range": 0.0,
+      "mobility_data": {
+        "dash_speed": 4.0,
+        "dash_range": 6.0,
+        "stop_on_hit": true
+      },
+      "status_effects": [
+        {
+          "type": "stun",
+          "duration_turns": 1.0,
+          "chance": 100,
+          "immunity_cooldown_turns": 60.0
+        }
+      ],
+      "particles": {
+        "type": "cobblemon:explosion",
+        "count": 1
+      }
+    }
+  ]
 }

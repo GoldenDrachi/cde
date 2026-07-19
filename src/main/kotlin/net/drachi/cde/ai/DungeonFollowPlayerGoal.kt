@@ -48,6 +48,7 @@ class DungeonFollowPlayerGoal(private val mob: PokemonEntity) : Goal() {
         isStuck = false
         oldWaterCost = mob.getPathfindingMalus(PathType.WATER)
         mob.setPathfindingMalus(PathType.WATER, 0.0f)
+        mob.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
     }
 
     override fun stop() {
@@ -57,6 +58,7 @@ class DungeonFollowPlayerGoal(private val mob: PokemonEntity) : Goal() {
     }
 
     override fun tick() {
+        mob.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
         mob.lookControl.setLookAt(owner!!, 10.0f, mob.maxHeadXRot.toFloat())
         
         if (--timeToRecalcPath <= 0) {

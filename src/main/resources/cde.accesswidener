@@ -1,0 +1,154 @@
+accessWidener	v2	named
+
+# Cobblemon makes use of the v2 protocol for access wideners. This allows for plugins
+# and mods depending on Cobblemon to apply theses wideners to their own environments,
+# avoiding illegal access errors where they would otherwise not apply on production.
+#
+# For all entries, unless otherwise noted, prefix each typical access keywork with
+# "transitive-" to ensure they will extend down to dev environments.
+
+transitive-accessible method net/minecraft/client/renderer/entity/LivingEntityRenderer addLayer (Lnet/minecraft/client/renderer/entity/layers/RenderLayer;)Z
+transitive-accessible field net/minecraft/world/entity/Entity DATA_AIR_SUPPLY_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+transitive-accessible method net/minecraft/world/entity/player/Player setShoulderEntityLeft (Lnet/minecraft/nbt/CompoundTag;)V
+transitive-accessible method net/minecraft/world/entity/player/Player setShoulderEntityRight (Lnet/minecraft/nbt/CompoundTag;)V
+transitive-accessible method net/minecraft/world/entity/player/Player respawnEntityOnShoulder (Lnet/minecraft/nbt/CompoundTag;)V
+transitive-accessible method net/minecraft/world/entity/player/Player getShoulderEntityLeft ()Lnet/minecraft/nbt/CompoundTag;
+transitive-accessible method net/minecraft/world/entity/player/Player getShoulderEntityRight ()Lnet/minecraft/nbt/CompoundTag;
+transitive-accessible method net/minecraft/client/renderer/entity/EntityRenderers register (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/client/renderer/entity/EntityRendererProvider;)V
+transitive-accessible field net/minecraft/client/Minecraft itemColors Lnet/minecraft/client/color/item/ItemColors;
+transitive-accessible field net/minecraft/client/model/geom/ModelPart children Ljava/util/Map;
+transitive-accessible field net/minecraft/client/model/geom/ModelPart cubes Ljava/util/List;
+transitive-accessible field net/minecraft/client/model/geom/builders/LayerDefinition mesh Lnet/minecraft/client/model/geom/builders/MeshDefinition;
+transitive-accessible field net/minecraft/client/model/geom/builders/PartDefinition cubes Ljava/util/List;
+transitive-accessible field net/minecraft/client/model/geom/builders/PartDefinition partPose Lnet/minecraft/client/model/geom/PartPose;
+transitive-accessible field net/minecraft/client/model/geom/builders/PartDefinition children Ljava/util/Map;
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDefinition origin Lorg/joml/Vector3f;
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDefinition dimensions Lorg/joml/Vector3f;
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDefinition texCoord Lnet/minecraft/client/model/geom/builders/UVPair;
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDefinition texScale Lnet/minecraft/client/model/geom/builders/UVPair;
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDefinition grow Lnet/minecraft/client/model/geom/builders/CubeDeformation;
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDeformation growX F
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDeformation growY F
+transitive-accessible field net/minecraft/client/model/geom/builders/CubeDeformation growZ F
+transitive-extendable method net/minecraft/world/entity/LivingEntity canBreatheUnderwater ()Z
+accessible method net/minecraft/world/entity/Entity getInputVector (Lnet/minecraft/world/phys/Vec3;FF)Lnet/minecraft/world/phys/Vec3;
+transitive-extendable class net/minecraft/world/level/block/grower/TreeGrower
+transitive-accessible method net/minecraft/world/level/block/SaplingBlock <init> (Lnet/minecraft/world/level/block/grower/TreeGrower;Lnet/minecraft/world/level/block/state/BlockBehaviour$Properties;)V
+accessible method net/minecraft/world/level/block/state/BlockBehaviour codec ()Lcom/mojang/serialization/MapCodec;
+accessible method net/minecraft/network/protocol/game/ClientboundAddEntityPacket <init> (Lnet/minecraft/network/RegistryFriendlyByteBuf;)V
+
+transitive-accessible field net/minecraft/world/entity/player/Inventory compartments Ljava/util/List;
+#transitive-accessible method net/minecraft/world/gen/feature/TreeFeature createStraightBlobTree (Lnet/minecraft/world/level/block/Block;Lnet/minecraft/world/level/block/Block;IIII)Lnet/minecraft/world/level/levelgen/feature/configurations/TreeConfiguration$TreeConfigurationBuilder;
+transitive-accessible method net/minecraft/world/level/block/LeavesBlock updateDistance (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;
+transitive-accessible method net/minecraft/world/entity/ai/navigation/PathNavigation shouldTargetNextNodeInDirection (Lnet/minecraft/world/phys/Vec3;)Z
+transitive-accessible field net/minecraft/world/effect/MobEffectInstance duration I
+transitive-accessible field net/minecraft/world/effect/MobEffectInstance ambient Z
+transitive-accessible method net/minecraft/client/renderer/LevelRenderer calculateParticleLevel (Z)Lnet/minecraft/client/ParticleStatus;
+transitive-accessible method net/minecraft/client/particle/ParticleEngine register (Lnet/minecraft/core/particles/ParticleType;Lnet/minecraft/client/particle/ParticleEngine$SpriteParticleRegistration;)V
+transitive-accessible field net/minecraft/client/particle/ParticleEngine textureAtlas Lnet/minecraft/client/renderer/texture/TextureAtlas;
+transitive-accessible field net/minecraft/client/renderer/LevelRenderer cullingFrustum Lnet/minecraft/client/renderer/culling/Frustum;
+transitive-accessible class net/minecraft/client/renderer/RenderType$CompositeRenderType
+transitive-accessible class net/minecraft/client/renderer/RenderType$CompositeState
+transitive-accessible method net/minecraft/client/renderer/RenderType create (Ljava/lang/String;Lcom/mojang/blaze3d/vertex/VertexFormat;Lcom/mojang/blaze3d/vertex/VertexFormat$Mode;IZZLnet/minecraft/client/renderer/RenderType$CompositeState;)Lnet/minecraft/client/renderer/RenderType$CompositeRenderType;
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$TransparencyStateShard
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard RENDERTYPE_ENTITY_TRANSLUCENT_EMISSIVE_SHADER Lnet/minecraft/client/renderer/RenderStateShard$ShaderStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard RENDERTYPE_ENTITY_TRANSLUCENT_SHADER Lnet/minecraft/client/renderer/RenderStateShard$ShaderStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard RENDERTYPE_ENTITY_TRANSLUCENT_CULL_SHADER Lnet/minecraft/client/renderer/RenderStateShard$ShaderStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard RENDERTYPE_ENTITY_CUTOUT_SHADER Lnet/minecraft/client/renderer/RenderStateShard$ShaderStateShard;
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$TextureStateShard
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard TRANSLUCENT_TRANSPARENCY Lnet/minecraft/client/renderer/RenderStateShard$TransparencyStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard NO_TRANSPARENCY Lnet/minecraft/client/renderer/RenderStateShard$TransparencyStateShard;
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$CullStateShard
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard CULL Lnet/minecraft/client/renderer/RenderStateShard$CullStateShard;
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$WriteMaskStateShard
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard COLOR_DEPTH_WRITE Lnet/minecraft/client/renderer/RenderStateShard$WriteMaskStateShard;
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$OverlayStateShard
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard OVERLAY Lnet/minecraft/client/renderer/RenderStateShard$OverlayStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard RENDERTYPE_CUTOUT_SHADER Lnet/minecraft/client/renderer/RenderStateShard$ShaderStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard LIGHTMAP Lnet/minecraft/client/renderer/RenderStateShard$LightmapStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard NO_CULL Lnet/minecraft/client/renderer/RenderStateShard$CullStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard COLOR_WRITE Lnet/minecraft/client/renderer/RenderStateShard$WriteMaskStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard NO_DEPTH_TEST Lnet/minecraft/client/renderer/RenderStateShard$DepthTestStateShard;
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$DepthTestStateShard
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard LEQUAL_DEPTH_TEST Lnet/minecraft/client/renderer/RenderStateShard$DepthTestStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard GLINT_TRANSPARENCY Lnet/minecraft/client/renderer/RenderStateShard$TransparencyStateShard;
+transitive-accessible field net/minecraft/client/renderer/RenderStateShard ADDITIVE_TRANSPARENCY Lnet/minecraft/client/renderer/RenderStateShard$TransparencyStateShard;
+
+
+#transitive-accessible field  net/minecraft/recipe/BrewingRecipeRegistry ITEM_RECIPES Ljava/util/List;
+#transitive-accessible field  net/minecraft/recipe/BrewingRecipeRegistry POTION_RECIPES Ljava/util/List;
+#transitive-accessible field  net/minecraft/recipe/BrewingRecipeRegistry POTION_TYPES Ljava/util/List;
+transitive-accessible class net/minecraft/world/item/alchemy/PotionBrewing$Mix
+
+transitive-accessible class net/minecraft/util/datafix/fixes/ItemStackComponentizationFix$ItemStackData
+
+accessible field net/minecraft/server/network/ServerCommonPacketListenerImpl connection Lnet/minecraft/network/Connection;
+transitive-accessible method net/minecraft/world/level/block/state/properties/WoodType register (Lnet/minecraft/world/level/block/state/properties/WoodType;)Lnet/minecraft/world/level/block/state/properties/WoodType;
+transitive-accessible field com/mojang/blaze3d/systems/RenderSystem shaderLightDirections [Lorg/joml/Vector3f;
+transitive-accessible class net/minecraft/world/inventory/BrewingStandMenu$PotionSlot
+transitive-accessible class net/minecraft/world/level/biome/Biome$ClimateSettings
+accessible field net/minecraft/client/gui/components/toasts/AdvancementToast BACKGROUND_SPRITE Lnet/minecraft/resources/ResourceLocation;
+#accessible method net/minecraft/text/Text$Serialization fromJson (Lcom/google/gson/JsonElement;)Lnet/minecraft/text/MutableComponent;
+
+
+transitive-accessible class net/minecraft/world/entity/npc/VillagerTrades$ItemsForEmeralds
+transitive-accessible field net/minecraft/server/PlayerAdvancements progress Ljava/util/Map;
+
+transitive-accessible field net/minecraft/world/entity/ai/goal/FollowOwnerGoal startDistance F
+transitive-accessible field net/minecraft/world/entity/ai/goal/FollowOwnerGoal stopDistance F
+
+transitive-accessible field net/minecraft/world/level/levelgen/structure/pools/SinglePoolElement template Lcom/mojang/datafixers/util/Either;
+transitive-accessible class net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement$Placer
+transitive-accessible class net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement$PieceState
+transitive-accessible field net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement$PieceState piece Lnet/minecraft/world/level/levelgen/structure/PoolElementStructurePiece;
+transitive-accessible method net/minecraft/client/resources/TextureAtlasHolder getSprite (Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;
+transitive-accessible field net/minecraft/client/resources/TextureAtlasHolder textureAtlas Lnet/minecraft/client/renderer/texture/TextureAtlas;
+transitive-accessible field net/minecraft/client/renderer/texture/TextureAtlas width I
+transitive-accessible field net/minecraft/client/renderer/texture/TextureAtlas height I
+
+transitive-accessible method net/minecraft/world/entity/schedule/Activity register (Ljava/lang/String;)Lnet/minecraft/world/entity/schedule/Activity;
+transitive-accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
+transitive-accessible class net/minecraft/client/model/geom/ModelPart$Polygon
+
+transitive-accessible method net/minecraft/world/entity/schedule/Activity <init> (Ljava/lang/String;)V
+transitive-accessible method net/minecraft/network/protocol/game/ClientboundAddEntityPacket write (Lnet/minecraft/network/RegistryFriendlyByteBuf;)V
+transitive-accessible method net/minecraft/client/renderer/item/ItemProperties register (Lnet/minecraft/world/item/Item;Lnet/minecraft/resources/ResourceLocation;Lnet/minecraft/client/renderer/item/ClampedItemPropertyFunction;)V
+
+transitive-accessible method net/minecraft/world/entity/ai/sensing/SensorType <init> (Ljava/util/function/Supplier;)V
+#accessible method net/minecraft/client/render/RenderLayer$MultiPhase (Ljava/lang/String;Lnet/minecraft/client/render/VertexFormat;Lnet/minecraft/client/render/VertexFormat$DrawMode;IZZLnet/minecraft/client/render/RenderLayer$MultiPhaseParameters;)Lnet/minecraft/client/render/RenderLayer$MultiPhase;
+transitive-accessible method net/minecraft/world/entity/Entity getDimensions (Lnet/minecraft/world/entity/Pose;)Lnet/minecraft/world/entity/EntityDimensions;
+transitive-extendable method net/minecraft/world/entity/LivingEntity getDimensions (Lnet/minecraft/world/entity/Pose;)Lnet/minecraft/world/entity/EntityDimensions;
+#String name, VertexFormat vertexFormat, VertexFormat.DrawMode drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent, MultiPhaseParameters phases
+transitive-accessible field net/minecraft/world/level/material/MapColor MATERIAL_COLORS [Lnet/minecraft/world/level/material/MapColor;
+
+transitive-accessible field net/minecraft/client/Minecraft textureManager Lnet/minecraft/client/renderer/texture/TextureManager;
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$EmptyTextureStateShard
+transitive-accessible class net/minecraft/client/renderer/RenderStateShard$LightmapStateShard
+
+transitive-accessible field net/minecraft/world/entity/LivingEntity jumping Z
+transitive-accessible field net/minecraft/world/entity/Entity FLAG_SHIFT_KEY_DOWN I
+transitive-accessible field net/minecraft/world/entity/Entity DATA_SHARED_FLAGS_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
+transitive-accessible class net/minecraft/client/gui/Font$StringRenderOutput
+
+transitive-accessible method net/minecraft/world/inventory/MenuType register (Ljava/lang/String;Lnet/minecraft/world/inventory/MenuType$MenuSupplier;)Lnet/minecraft/world/inventory/MenuType;
+transitive-accessible class net/minecraft/world/inventory/MenuType$MenuSupplier
+transitive-accessible method net/minecraft/world/inventory/MenuType <init> (Lnet/minecraft/world/inventory/MenuType$MenuSupplier;Lnet/minecraft/world/flag/FeatureFlagSet;)V
+transitive-accessible class net/minecraft/client/gui/screens/MenuScreens$ScreenConstructor
+transitive-accessible method net/minecraft/client/gui/screens/MenuScreens register (Lnet/minecraft/world/inventory/MenuType;Lnet/minecraft/client/gui/screens/MenuScreens$ScreenConstructor;)V
+transitive-accessible method net/minecraft/resources/ResourceLocation <init> (Ljava/lang/String;Ljava/lang/String;)V
+transitive-accessible field net/minecraft/stats/RecipeBookSettings states Ljava/util/Map;
+transitive-accessible class net/minecraft/stats/RecipeBookSettings$TypeSettings
+transitive-accessible field net/minecraft/client/gui/screens/recipebook/RecipeBookComponent tabButtons Ljava/util/List;
+accessible field net/minecraft/client/gui/screens/recipebook/RecipeBookComponent menu Lnet/minecraft/world/inventory/RecipeBookMenu;
+accessible method net/minecraft/world/level/block/AbstractCandleBlock addParticlesAndSound (Lnet/minecraft/world/level/Level;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/util/RandomSource;)V
+
+transitive-accessible class net/minecraft/world/inventory/BrewingStandMenu$IngredientsSlot
+transitive-accessible class net/minecraft/world/inventory/BrewingStandMenu$FuelSlot
+
+transitive-accessible method net/minecraft/world/entity/ai/behavior/RandomStroll getTargetSwimPos (Lnet/minecraft/world/entity/PathfinderMob;)Lnet/minecraft/world/phys/Vec3;
+
+transitive-accessible method net/minecraft/world/food/FoodData add (IF)V
+
+transitive-accessible method net/minecraft/client/model/HumanoidModel setupAttackAnimation (Lnet/minecraft/world/entity/LivingEntity;F)V
+transitive-accessible method net/minecraft/client/model/HumanoidModel poseRightArm (Lnet/minecraft/world/entity/LivingEntity;)V
+transitive-accessible method net/minecraft/client/model/HumanoidModel poseLeftArm (Lnet/minecraft/world/entity/LivingEntity;)V

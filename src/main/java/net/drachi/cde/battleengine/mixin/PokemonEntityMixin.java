@@ -26,25 +26,4 @@ public abstract class PokemonEntityMixin {
         }
     }
 
-    /**
-     * PokemonEntity uses Brain to handle navigation by default, which conflicts
-     * with our goalSelector goals (like DungeonFollowPlayerGoal and DungeonWanderGoal).
-     * If realtime is enabled, we prevent the Brain from ticking so our goals can control movement.
-     */
-    @Redirect(
-        method = "customServerAiStep",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/ai/Brain;tick(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LivingEntity;)V"
-        )
-    )
-    private void redirectBrainTick(Brain<LivingEntity> brain, ServerLevel level, LivingEntity entity) {
-        boolean realtime = BattleEngineConfigManager.INSTANCE.getConfig().isRealtimeEnabled();
-        if (entity.tickCount % 40 == 0) {
-            System.out.println("[CDE-AI-MIXIN] redirectBrainTick for " + entity.getName().getString() + " - realtime: " + realtime);
-        }
-        if (!realtime) {
-            brain.tick(level, entity);
-        }
-    }
 }

@@ -13,11 +13,11 @@
   "client": [
     "client.PlayerEntityRendererMixin",
     "client.ItemInHandRendererMixin",
-    "client.MinecraftClientMixin"
+    "client.MinecraftClientMixin",
+    "client.EntityRenderDispatcherMixin",
+    "SpawnSnowstormEntityParticleHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
   }
 }
-
-

@@ -1,24 +1,24 @@
 {
-    "cobblemon_move_id":  "cobblemon:fleurcannon",
-    "cooldown_turns":  5.0,
-    "phases":  [
-                   {
-                       "attack_type":  "BEAM",
-                       "base_power":  130,
-                       "accuracy":  90,
-                       "range":  15.0,
-                       "status_effects":  [
-                                              {
-                                                  "type":  "special_attack_down_2",
-                                                  "duration_turns":  5.0,
-                                                  "chance": 100
-                                              }
-                                          ],
-                       "hits_friendlies":  false,
-                       "particles":  {
-                                         "type":  "magic",
-                                         "count":  10
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:fleurcannon",
+  "cooldown_turns": 5.0,
+  "phases": [
+    {
+      "attack_type": "BEAM",
+      "base_power": 130,
+      "accuracy": 90,
+      "range": 15.0,
+      "status_effects": [
+        {
+          "type": "special_attack_down_2",
+          "duration_turns": 5.0,
+          "chance": 100
+        }
+      ],
+      "hits_friendlies": false,
+      "particles": {
+        "type": "cobblemon:sparkle",
+        "count": 10
+      }
+    }
+  ]
 }

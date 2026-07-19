@@ -1,23 +1,24 @@
 {
-    "cobblemon_move_id":  "cobblemon:amnesia",
-    "cooldown_turns":  4.0,
-    "phases":  [
-                   {
-                       "attack_type":  "SELF",
-                       "base_power":  0,
-                       "accuracy":  100,
-                       "range":  0.0,
-                       "status_effects":  [
-                                              {
-                                                  "type":  "special_defense_up_2",
-                                                  "duration_turns":  15.0,
-                                                  "chance": 100
-                                              }
-                                          ],
-                       "particles":  {
-                                         "type":  "magic",
-                                         "count":  5
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:amnesia",
+  "cooldown_turns": 4.0,
+  "phases": [
+    {
+      "attack_type": "SELF",
+      "base_power": 0,
+      "accuracy": 100,
+      "range": 0.0,
+      "status_effects": [
+        {
+          "type": "special_defense_up_2",
+          "duration_turns": 15.0,
+          "chance": 100
+        }
+      ],
+      "particles": {
+        "type": "cobblemon:amnesia_actorcloud",
+        "count": 5,
+        "bind_to_caster": true
+      }
+    }
+  ]
 }

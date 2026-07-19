@@ -1,25 +1,25 @@
 {
-    "cobblemon_move_id":  "cobblemon:leer",
-    "cooldown_turns":  2.0,
-    "phases":  [
-                   {
-                       "attack_type":  "CONE",
-                       "base_power":  0,
-                       "accuracy":  100,
-                       "range":  5.0,
-                       "hits_friendlies":  false,
-                       "multiple_targets":  true,
-                       "status_effects":  [
-                                              {
-                                                  "type":  "defense_down",
-                                                  "duration_turns":  20.0,
-                                                  "chance": 100
-                                              }
-                                          ],
-                       "particles":  {
-                                         "type":  "magic",
-                                         "count":  3
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:leer",
+  "cooldown_turns": 2.0,
+  "phases": [
+    {
+      "attack_type": "CONE",
+      "base_power": 0,
+      "accuracy": 100,
+      "range": 5.0,
+      "hits_friendlies": false,
+      "multiple_targets": true,
+      "status_effects": [
+        {
+          "type": "defense_down",
+          "duration_turns": 20.0,
+          "chance": 100
+        }
+      ],
+      "particles": {
+        "type": "cobblemon:leer_gleam",
+        "count": 3
+      }
+    }
+  ]
 }

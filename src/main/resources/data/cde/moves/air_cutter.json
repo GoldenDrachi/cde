@@ -1,17 +1,18 @@
 {
-    "cobblemon_move_id":  "cobblemon:aircutter",
-    "cooldown_turns":  2.0,
-    "phases":  [
-                   {
-                       "attack_type":  "WAVE",
-                       "base_power":  60,
-                       "accuracy":  95,
-                       "range":  12.0,
-                       "multiple_targets":  true,
-                       "particles":  {
-                                         "type":  "sweep_attack",
-                                         "count":  5
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:aircutter",
+  "cooldown_turns": 2.0,
+  "phases": [
+    {
+      "attack_type": "WAVE",
+      "base_power": 60,
+      "accuracy": 95,
+      "range": 12.0,
+      "multiple_targets": true,
+      "particles": {
+        "type": "cobblemon:scratch_target",
+        "count": 5,
+        "bind_to_target": true
+      }
+    }
+  ]
 }

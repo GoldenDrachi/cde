@@ -76,13 +76,13 @@ object EntityUtil {
         var minDistance = blockHit?.location?.distanceTo(start) ?: range
         
         val box = entity.boundingBox.expandTowards(look.scale(range)).inflate(1.0)
-        for (other in entity.level().getEntities(entity, box) { it is LivingEntity && it.isPickable }) {
+        for (other in entity.level().getEntities(entity, box) { it is LivingEntity && it.isPickable && it != entity && !isFriendly(entity, it) }) {
             val aabb = other.boundingBox.inflate(0.3)
             val hitOptional = aabb.clip(start, end)
             if (hitOptional.isPresent) {
                 val hitPos = hitOptional.get()
                 val dist = start.distanceTo(hitPos)
-                if (dist < minDistance) {
+                if (dist < minDistance && dist > 0.5) {
                     minDistance = dist
                     closestEntity = net.minecraft.world.phys.EntityHitResult(other, hitPos)
                 }
