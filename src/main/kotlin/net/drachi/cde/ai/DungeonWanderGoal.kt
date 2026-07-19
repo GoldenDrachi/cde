@@ -54,14 +54,21 @@ class DungeonWanderGoal(private val pokemon: PokemonEntity, private val speedMod
     }
 
     override fun start() {
-        if (targetPos != null) {
-            pokemon.navigation.moveTo(targetPos!!.x, targetPos!!.y, targetPos!!.z, calculateSpeed())
-        }
+        val target = targetPos ?: return
+        pokemon.navigation.moveTo(target.x, target.y, target.z, calculateSpeed())
+        // Disable Cobblemon brain's walk target so it doesn't fight our navigation
+        pokemon.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
+    }
+
+    override fun tick() {
+        // Disable Cobblemon brain's walk target so it doesn't fight our navigation
+        pokemon.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
     }
 
     override fun stop() {
+        targetPos = null
         pokemon.navigation.stop()
-        // Wait a few seconds before wandering again
-        waitTicks = pokemon.random.nextInt(20) + 10
+        // Wait between 2 to 5 seconds before wandering again
+        waitTicks = 40 + pokemon.random.nextInt(60)
     }
 }

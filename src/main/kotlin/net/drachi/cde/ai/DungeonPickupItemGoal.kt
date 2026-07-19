@@ -59,6 +59,7 @@ class DungeonPickupItemGoal(private val pokemon: PokemonEntity) : Goal() {
     override fun start() {
         if (targetItem != null) {
             pokemon.navigation.moveTo(targetItem!!, getNormalizedSpeed())
+            pokemon.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
         }
     }
 
@@ -68,6 +69,7 @@ class DungeonPickupItemGoal(private val pokemon: PokemonEntity) : Goal() {
     }
 
     override fun tick() {
+        pokemon.brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET)
         val item = targetItem ?: return
         
         if (!item.isAlive || !pokemon.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty) {
