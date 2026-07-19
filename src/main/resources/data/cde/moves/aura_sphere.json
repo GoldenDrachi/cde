@@ -1,16 +1,16 @@
 {
-    "cobblemon_move_id":  "cobblemon:aurasphere",
-    "cooldown_turns":  3.0,
-    "phases":  [
-                   {
-                       "attack_type":  "PROJECTILE",
-                       "base_power":  80,
-                       "accuracy":  -1,
-                       "range":  20.0,
-                       "particles":  {
-                                         "type":  "magic",
-                                         "count":  1
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:aurasphere",
+  "cooldown_turns": 3.0,
+  "phases": [
+    {
+      "attack_type": "PROJECTILE",
+      "base_power": 80,
+      "accuracy": -1,
+      "range": 20.0,
+      "particles": {
+        "type": "cobblemon:sparkle",
+        "count": 1
+      }
+    }
+  ]
 }

@@ -1,16 +1,33 @@
 {
-    "cobblemon_move_id":  "cobblemon:aerialace",
-    "cooldown_turns":  2.5,
-    "phases":  [
-                   {
-                       "attack_type":  "MELEE",
-                       "base_power":  60,
-                       "accuracy":  -1,
-                       "range":  2.0,
-                       "particles":  {
-                                         "type":  "sweep_attack",
-                                         "count":  2
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:aerialace",
+  "cooldown_turns": 2.5,
+  "phases": [
+    {
+      "chargeup_ticks": 10,
+      "particles": {
+        "type": "cobblemon:aerialace_actorjump",
+        "count": 1,
+        "bind_to_caster": true,
+        "bind_to_target": true
+      }
+    },
+    {
+      "attack_type": "MELEE",
+      "base_power": 60,
+      "accuracy": -1,
+      "range": 2.0,
+      "particles": {
+        "type": "cobblemon:aerialace_target",
+        "count": 1,
+        "bind_to_target": true
+      },
+      "extra_particles": [
+        {
+          "type": "cobblemon:aerialace_targetburst",
+          "count": 1,
+          "bind_to_target": true
+        }
+      ]
+    }
+  ]
 }

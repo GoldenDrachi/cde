@@ -1,16 +1,17 @@
 {
-    "cobblemon_move_id":  "cobblemon:acrobatics",
-    "cooldown_turns":  2.5,
-    "phases":  [
-                   {
-                       "attack_type":  "MELEE",
-                       "base_power":  55,
-                       "accuracy":  100,
-                       "range":  4.0,
-                       "particles":  {
-                                         "type":  "sweep_attack",
-                                         "count":  3
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:acrobatics",
+  "cooldown_turns": 2.5,
+  "phases": [
+    {
+      "attack_type": "MELEE",
+      "base_power": 55,
+      "accuracy": 100,
+      "range": 4.0,
+      "particles": {
+        "type": "cobblemon:scratch_target",
+        "count": 3,
+        "bind_to_target": true
+      }
+    }
+  ]
 }

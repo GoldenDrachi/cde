@@ -36,6 +36,7 @@
     "cde.battleengine.mixins.json",
     "cde.dungeonsengine.mixins.json"
   ],
+  "accessWidener": "cde.accesswidener",
   "depends": {
     "fabricloader": ">=0.18.0",
     "minecraft": "~1.21.1",

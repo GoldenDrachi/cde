@@ -7,6 +7,8 @@ import net.drachi.cde.battleengine.battle.status.*
 
 import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.cobblemon.mod.common.client.entity.PokemonClientDelegate
+import com.cobblemon.mod.common.client.render.models.blockbench.PosableState
 import net.minecraft.client.player.AbstractClientPlayer
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.Minecraft
@@ -15,7 +17,15 @@ import com.mojang.blaze3d.vertex.PoseStack
 import java.util.WeakHashMap
 
 object MorphRenderer {
-    private val fakeEntities = WeakHashMap<AbstractClientPlayer, PokemonEntity>()
+    val fakeEntities = WeakHashMap<AbstractClientPlayer, PokemonEntity>()
+    private val lastSwingTicks = WeakHashMap<AbstractClientPlayer, Int>()
+    private val lastTickedAge = WeakHashMap<AbstractClientPlayer, Int>()
+
+    init {
+        MorphRendererProxy.fakeEntityProvider = { entity ->
+            if (entity is AbstractClientPlayer) fakeEntities[entity] else null
+        }
+    }
 
     @JvmStatic
     fun tryRenderMorph(player: AbstractClientPlayer, entityYaw: Float, partialTicks: Float, poseStack: PoseStack, buffer: MultiBufferSource, packedLight: Int): Boolean {
@@ -43,6 +53,7 @@ object MorphRenderer {
             fakeEntity.addTag("cdbe_puppet")
             fakeEntity.entityData.set(PokemonEntity.HIDE_LABEL, true)
             fakeEntities[player] = fakeEntity
+            fakeEntity.tick()
         }
         
         var renderEntity: net.minecraft.world.entity.Entity = fakeEntity
@@ -56,8 +67,8 @@ object MorphRenderer {
         fakeEntity.yo = player.yo
         fakeEntity.zo = player.zo
         fakeEntity.yRotO = player.yRotO
-        fakeEntity.yBodyRot = player.yBodyRot
-        fakeEntity.yBodyRotO = player.yBodyRotO
+        fakeEntity.yBodyRot = player.yHeadRot
+        fakeEntity.yBodyRotO = player.yHeadRotO
         fakeEntity.yHeadRot = player.yHeadRot
         fakeEntity.yHeadRotO = player.yHeadRotO
         fakeEntity.xRotO = player.xRotO
@@ -93,30 +104,62 @@ object MorphRenderer {
         fakeEntity.yya = player.yya
         fakeEntity.zza = player.zza
         
+        // Sync POSE_TYPE and MOVING manually for the animation controller, since the fake entity is never ticked on the server
+        val isMoving = player.deltaMovement.horizontalDistanceSqr() > 0.0001 || player.xxa != 0f || player.zza != 0f
+        val poseType = when {
+            player.isPassenger -> com.cobblemon.mod.common.entity.PoseType.STAND
+            player.isSleeping -> com.cobblemon.mod.common.entity.PoseType.SLEEP
+            isMoving && player.isSwimming -> com.cobblemon.mod.common.entity.PoseType.SWIM
+            player.isSwimming -> com.cobblemon.mod.common.entity.PoseType.FLOAT
+            isMoving && player.abilities.flying -> com.cobblemon.mod.common.entity.PoseType.FLY
+            player.abilities.flying -> com.cobblemon.mod.common.entity.PoseType.HOVER
+            isMoving -> com.cobblemon.mod.common.entity.PoseType.WALK
+            else -> com.cobblemon.mod.common.entity.PoseType.STAND
+        }
+        fakeEntity.entityData.set(com.cobblemon.mod.common.entity.pokemon.PokemonEntity.POSE_TYPE, poseType)
+        fakeEntity.entityData.set(com.cobblemon.mod.common.entity.pokemon.PokemonEntity.MOVING, isMoving)
+
+        // Fix q.is_moving for Molang by giving the AI a wanted position if the player is moving
+        if (player.deltaMovement.horizontalDistanceSqr() > 0.0001) {
+            fakeEntity.navigation.moveTo(player.x + player.deltaMovement.x, player.y, player.z + player.deltaMovement.z, 1.0)
+        } else {
+            fakeEntity.navigation.stop()
+        }
+
         // Sync attack and swing states
         fakeEntity.attackAnim = player.attackAnim
         fakeEntity.oAttackAnim = player.oAttackAnim
         fakeEntity.swingTime = player.swingTime
 
         // Trigger Cobblemon attack animations if swing just started
-        if (player.swingTime == 1) {
+        if (player.swingTime == 1 && lastSwingTicks[player] != player.tickCount) {
+            lastSwingTicks[player] = player.tickCount
             try {
                 // Try playing both common attack animations - missing ones are ignored safely by Cobblemon
                 (fakeEntity as com.cobblemon.mod.common.entity.PosableEntity).playAnimation("physical_attack")
-                (fakeEntity as com.cobblemon.mod.common.entity.PosableEntity).playAnimation("attack")
+                (fakeEntity as com.cobblemon.mod.common.entity.PosableEntity).playAnimation("special_attack")
             } catch (_: Exception) {}
         }
 
         // Calculate entity animation manually to process limb swinging without ticking the AI
         if (fakeEntity.tickCount < player.tickCount) {
             fakeEntity.tickCount = player.tickCount
-            // Let PokemonSideDelegate tick the Geckolib animation components if necessary (if exposed)
-            // But calculateEntityAnimation(true) does the basic limb calculation for vanilla
             fakeEntity.calculateEntityAnimation(true)
-            
-            // The AI tick is cancelled by PokemonEntityTickMixin to prevent crashes,
-            // but the mixin safely ticks Geckolib's delegate to process animations.
-            fakeEntity.tick()
+        }
+
+        // Advance Cobblemon's animation timer (incrementAge) for each missed game tick.
+        // Without this, animationSeconds stays at 0 and all pose/bedrock animations freeze.
+        val clientDelegate = fakeEntity.delegate as? PokemonClientDelegate
+        if (clientDelegate != null) {
+            val currentTick = player.tickCount
+            val lastTick = lastTickedAge[player] ?: (currentTick - 1)
+            val missedTicks = (currentTick - lastTick).coerceIn(0, 5)
+            for (i in 0 until missedTicks) {
+                clientDelegate.incrementAge(fakeEntity)
+            }
+            lastTickedAge[player] = currentTick
+            // Provide partial tick value for smooth interpolation between game ticks
+            clientDelegate.updatePartialTicks(partialTicks)
         }
 
         // Calculate dynamic scale constraint for dungeons
@@ -154,4 +197,32 @@ object MorphRenderer {
         val pokemon = net.drachi.cde.battleengine.util.MorphUtil.getActivePokemon(player) ?: return false
         return pokemon.entity == null
     }
+
+    //Helper function for stuck Location of Fakeentities (for eyxample after opening inventory)
+    @JvmStatic
+fun syncEntityForParticles(player: AbstractClientPlayer, fakeEntity: PokemonEntity) {
+    // Sync base-coords
+    fakeEntity.setPos(player.x, player.y, player.z)
+    fakeEntity.xo = player.xo
+    fakeEntity.yo = player.yo
+    fakeEntity.zo = player.zo
+    fakeEntity.yRotO = player.yRotO
+    fakeEntity.yBodyRot = player.yHeadRot
+    fakeEntity.yBodyRotO = player.yHeadRotO
+    fakeEntity.yHeadRot = player.yHeadRot
+    fakeEntity.yHeadRotO = player.yHeadRotO
+    fakeEntity.xRotO = player.xRotO
+    fakeEntity.setXRot(player.xRot)
+    fakeEntity.setYRot(player.yRot)
+
+    // Calculate model
+    fakeEntity.tickCount = player.tickCount
+    fakeEntity.calculateEntityAnimation(true)
+    
+    // Update delegate
+    val clientDelegate = fakeEntity.delegate as? com.cobblemon.mod.common.client.entity.PokemonClientDelegate
+    if (clientDelegate != null) {
+        clientDelegate.incrementAge(fakeEntity)
+    }
+}
 }

@@ -1,24 +1,24 @@
 {
-    "cobblemon_move_id":  "cobblemon:flashcannon",
-    "cooldown_turns":  5.0,
-    "phases":  [
-                   {
-                       "attack_type":  "BEAM",
-                       "base_power":  80,
-                       "accuracy":  100,
-                       "range":  15.0,
-                       "status_effects":  [
-                                              {
-                                                  "type":  "special_defense_down",
-                                                  "duration_turns":  15.0,
-                                                  "chance": 10
-                                              }
-                                          ],
-                       "hits_friendlies":  false,
-                       "particles":  {
-                                         "type":  "explosion",
-                                         "count":  10
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:flashcannon",
+  "cooldown_turns": 5.0,
+  "phases": [
+    {
+      "attack_type": "BEAM",
+      "base_power": 80,
+      "accuracy": 100,
+      "range": 15.0,
+      "status_effects": [
+        {
+          "type": "special_defense_down",
+          "duration_turns": 15.0,
+          "chance": 10
+        }
+      ],
+      "hits_friendlies": false,
+      "particles": {
+        "type": "cobblemon:explosion",
+        "count": 10
+      }
+    }
+  ]
 }

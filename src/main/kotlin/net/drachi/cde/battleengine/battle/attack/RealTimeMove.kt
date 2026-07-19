@@ -38,6 +38,8 @@ data class MovePhase(
     @SerializedName("homing_strength") val homingStrength: Float? = null,
     @SerializedName("projectile_speed") val projectileSpeed: Float? = null,
     @SerializedName("particles") val particles: ParticleData? = null,
+    @SerializedName("extra_particles") val extraParticles: List<ParticleData>? = null,
+    @SerializedName("on_hit_particles") val onHitParticles: ParticleData? = null,
     @SerializedName("status_effects") val statusEffects: List<StatusEffectData>? = null,
     @SerializedName("hits_friendlies") val hitsFriendlies: Boolean = false,
     @SerializedName("multiple_targets") val multipleTargets: Boolean = false,
@@ -68,7 +70,9 @@ data class MovePhase(
 data class ParticleData(
     @SerializedName("type") val type: String,
     @SerializedName("count") val count: Int = 1,
-    @SerializedName("color") val color: String? = null
+    @SerializedName("color") val color: String? = null,
+    @SerializedName("bind_to_target") val bindToTarget: Boolean = false,
+    @SerializedName("bind_to_caster") val bindToCaster: Boolean = false
 )
 
 data class StatusEffectData(
