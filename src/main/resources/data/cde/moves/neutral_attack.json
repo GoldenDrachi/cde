@@ -1,18 +1,19 @@
 {
-    "cobblemon_move_id": "cobblemon:neutral_attack",
-    "sound": "minecraft:entity.player.attack.sweep",
-    "cooldown_turns": 1.5,
-    "phases": [
-        {
-            "attack_type": "MELEE",
-            "base_power": 20,
-            "accuracy": 100,
-            "range": 3.0,
-            "hits_friendlies": false,
-            "particles": {
-                "type": "sweep_attack",
-                "count": 1
-            }
-        }
-    ]
+  "cobblemon_move_id": "cobblemon:neutral_attack",
+  "sound": "minecraft:entity.player.attack.sweep",
+  "cooldown_turns": 1.5,
+  "phases": [
+    {
+      "attack_type": "MELEE",
+      "base_power": 20,
+      "accuracy": 100,
+      "range": 3.0,
+      "hits_friendlies": false,
+      "particles": {
+        "type": "cobblemon:scratch_target",
+        "count": 1,
+        "bind_to_target": true
+      }
+    }
+  ]
 }

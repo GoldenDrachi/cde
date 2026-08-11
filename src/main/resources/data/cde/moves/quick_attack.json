@@ -1,21 +1,22 @@
 {
-    "cobblemon_move_id":  "cobblemon:quickattack",
-    "cooldown_turns":  1.0,
-    "phases":  [
-                   {
-                       "attack_type":  "DASH",
-                       "base_power":  40,
-                       "accuracy":  100,
-                       "range":  0.0,
-                       "mobility_data":  {
-                                             "dash_speed":  4.0,
-                                             "dash_range":  12.0,
-                                             "stop_on_hit":  true
-                                         },
-                       "particles":  {
-                                         "type":  "poof",
-                                         "count":  5
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:quickattack",
+  "cooldown_turns": 1.0,
+  "phases": [
+    {
+      "attack_type": "DASH",
+      "base_power": 40,
+      "accuracy": 100,
+      "range": 0.0,
+      "mobility_data": {
+        "dash_speed": 4.0,
+        "dash_range": 12.0,
+        "stop_on_hit": true
+      },
+      "particles": {
+        "type": "cobblemon:quickattack_dashlines",
+        "count": 5,
+        "bind_to_caster": true
+      }
+    }
+  ]
 }

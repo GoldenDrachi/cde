@@ -39,6 +39,14 @@ object DelayedActionManager {
     private val queuedPhases = mutableListOf<QueuedPhase>()
     private val repeatingPhases = mutableListOf<RepeatingPhase>()
 
+    data class SimpleDelayedAction(val fireTimeMs: Long, val action: () -> Unit)
+    private val simpleDelayedActions = mutableListOf<SimpleDelayedAction>()
+
+    fun addDelayedAction(delayTicks: Int, action: () -> Unit) {
+        val fireTime = System.currentTimeMillis() + (delayTicks * 50L)
+        simpleDelayedActions.add(SimpleDelayedAction(fireTime, action))
+    }
+
     fun queuePhase(executionId: UUID, casterEntity: net.minecraft.world.entity.LivingEntity, pokemonStats: Pokemon, move: RealTimeMove, moveTemplate: MoveTemplate, phase: MovePhase, delayTicks: Long) {
         val fireTime = System.currentTimeMillis() + (delayTicks * 50L) // 50ms per tick
         
@@ -137,6 +145,16 @@ object DelayedActionManager {
                 } else {
                     repeatingIterator.remove()
                 }
+            }
+        }
+        
+        // Handle simple delayed actions
+        val simpleIterator = simpleDelayedActions.iterator()
+        while (simpleIterator.hasNext()) {
+            val action = simpleIterator.next()
+            if (currentTime >= action.fireTimeMs) {
+                action.action()
+                simpleIterator.remove()
             }
         }
     }

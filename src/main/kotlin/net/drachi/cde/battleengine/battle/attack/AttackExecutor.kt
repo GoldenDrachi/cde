@@ -428,6 +428,7 @@ object AttackExecutor {
         }
 
         ctx.anyTargetHit = true
+        ParticleUtil.resolveOnHitParticles(ctx.world, ctx.phase.onHitParticles, targetEntity)
 
         val result = DamageCalculator.calculateDamage(ctx.pokemonStats, defenderStats, ctx.move, ctx.phase, ctx.moveTemplate, targetCount, ctx.caster, targetEntity)
         val damage = result.finalDamage
@@ -494,6 +495,9 @@ object AttackExecutor {
                 if (ctx.heldItem == "cobblemon:blunder_policy") ctx.blunderPolicyTriggered = true
                 return
             }
+
+            ctx.anyTargetHit = true
+            ParticleUtil.resolveOnHitParticles(ctx.world, ctx.phase.onHitParticles, targetEntity)
 
             val result = DamageCalculator.calculateDamage(ctx.pokemonStats, defenderStats, ctx.move, ctx.phase, ctx.moveTemplate, targetCount, ctx.caster, targetEntity)
             val damage = result.finalDamage
@@ -604,6 +608,9 @@ object AttackExecutor {
 
         val genericDamage = (actualPower.toFloat() / 10.0f).coerceAtLeast(1.0f)
         val dmgInt = genericDamage.toInt()
+        
+        ctx.anyTargetHit = true
+        ParticleUtil.resolveOnHitParticles(ctx.world, ctx.phase.onHitParticles, targetEntity)
         if (dmgInt > 0) {
             ctx.totalDamageDealt += dmgInt
             if (ctx.heldItem == "cobblemon:life_orb") ctx.lifeOrbTriggered = true

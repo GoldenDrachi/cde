@@ -1,24 +1,42 @@
 {
-    "cobblemon_move_id":  "cobblemon:flamethrower",
-    "cooldown_turns":  5.0,
-    "phases":  [
-                   {
-                       "attack_type":  "BEAM",
-                       "base_power":  90,
-                       "accuracy":  100,
-                       "range":  15.0,
-                       "status_effects":  [
-                                              {
-                                                  "type":  "burn",
-                                                  "duration_turns":  5.0,
-                                                  "chance": 10
-                                              }
-                                          ],
-                       "hits_friendlies":  false,
-                       "particles":  {
-                                         "type":  "flame",
-                                         "count":  10
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:flamethrower",
+  "cooldown_turns": 5.0,
+  "phases": [
+    {
+      "attack_type": null,
+      "chargeup_ticks": 10,
+      "particles": {
+        "type": "cobblemon:flamethrower_actor",
+        "count": 1,
+        "bind_to_caster": true,
+        "bind_to_target": true
+      }
+    },
+    {
+      "attack_type": "BEAM",
+      "base_power": 90,
+      "accuracy": 100,
+      "range": 15.0,
+      "status_effects": [
+        {
+          "type": "burn",
+          "duration_turns": 5.0,
+          "chance": 10
+        }
+      ],
+      "hits_friendlies": false,
+      "particles": {
+        "type": "cobblemon:flamethrower_target",
+        "count": 1,
+        "bind_to_target": true
+      },
+      "extra_particles": [
+        {
+          "type": "cobblemon:flamethrower_targetburst",
+          "count": 1,
+          "bind_to_target": true
+        }
+      ]
+    }
+  ]
 }

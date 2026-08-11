@@ -60,10 +60,11 @@ object AiModule {
             if (state != HostilityState.PEACEFUL) {
                 val targetSel = (entity as MobAccessor).targetSelector
                 
-                // Clear vanilla attack and flee goals
-                availableGoals.removeIf {
-                    val name = it.goal.javaClass.simpleName.lowercase()
-                    name.contains("attack") || name.contains("avoid") || name.contains("panic") || name.contains("flee")
+                if (state == HostilityState.HOSTILE) {
+                    availableGoals.removeIf {
+                        val name = it.goal.javaClass.simpleName.lowercase()
+                        name.contains("attack") || name.contains("avoid") || name.contains("panic") || name.contains("flee")
+                    }
                 }
                 
                 goalSel.addGoal(0, net.drachi.cde.ai.HostileRealTimeGoal(entity))

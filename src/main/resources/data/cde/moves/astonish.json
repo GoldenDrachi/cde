@@ -1,23 +1,23 @@
 {
-    "cobblemon_move_id":  "cobblemon:astonish",
-    "cooldown_turns":  1.5,
-    "phases":  [
-                   {
-                       "attack_type":  "MELEE",
-                       "base_power":  30,
-                       "accuracy":  100,
-                       "range":  4.0,
-                       "status_effects":  [
-                                              {
-                                                  "type":  "stun",
-                                                  "duration_turns":  1.0,
-                                                  "chance": 30
-                                              }
-                                          ],
-                       "particles":  {
-                                         "type":  "magic",
-                                         "count":  2
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:astonish",
+  "cooldown_turns": 1.5,
+  "phases": [
+    {
+      "attack_type": "MELEE",
+      "base_power": 30,
+      "accuracy": 100,
+      "range": 4.0,
+      "status_effects": [
+        {
+          "type": "stun",
+          "duration_turns": 1.0,
+          "chance": 30
+        }
+      ],
+      "particles": {
+        "type": "cobblemon:sparkle",
+        "count": 2
+      }
+    }
+  ]
 }

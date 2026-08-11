@@ -1,19 +1,20 @@
 {
-    "cobblemon_move_id":  "cobblemon:gigadrain",
-    "cooldown_turns":  2.0,
-    "phases":  [
-                   {
-                       "attack_type":  "PROJECTILE",
-                       "base_power":  75,
-                       "accuracy":  100,
-                       "range":  15.0,
-                       "health_manipulation_data":  {
-                                                        "drain_percent":  50.0
-                                                    },
-                       "particles":  {
-                                         "type":  "composter",
-                                         "count":  3
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:gigadrain",
+  "cooldown_turns": 2.0,
+  "phases": [
+    {
+      "attack_type": "PROJECTILE",
+      "base_power": 75,
+      "accuracy": 100,
+      "range": 15.0,
+      "health_manipulation_data": {
+        "drain_percent": 50.0
+      },
+      "particles": {
+        "type": "cobblemon:gigadrain_actor",
+        "count": 3,
+        "bind_to_caster": true
+      }
+    }
+  ]
 }

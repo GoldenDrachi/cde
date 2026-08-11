@@ -1,19 +1,20 @@
 {
-    "cobblemon_move_id":  "cobblemon:absorb",
-    "cooldown_turns":  2.0,
-    "phases":  [
-                   {
-                       "attack_type":  "CONE",
-                       "base_power":  20,
-                       "accuracy":  100,
-                       "range":  12.0,
-                       "health_manipulation_data":  {
-                                                        "drain_percent":  0.5
-                                                    },
-                       "particles":  {
-                                         "type":  "happy_villager",
-                                         "count":  5
-                                     }
-                   }
-               ]
+  "cobblemon_move_id": "cobblemon:absorb",
+  "cooldown_turns": 2.0,
+  "phases": [
+    {
+      "attack_type": "CONE",
+      "base_power": 20,
+      "accuracy": 100,
+      "range": 12.0,
+      "health_manipulation_data": {
+        "drain_percent": 0.5
+      },
+      "particles": {
+        "type": "cobblemon:absorb_actor",
+        "count": 5,
+        "bind_to_caster": true
+      }
+    }
+  ]
 }
