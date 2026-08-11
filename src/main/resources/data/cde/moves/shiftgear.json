@@ -1,0 +1,29 @@
+{
+    "cobblemon_move_id":  "cobblemon:shiftgear",
+    "cooldown_turns":  4.0,
+    "phases":  [
+                   {
+                       "attack_type":  "SELF",
+                       "base_power":  0,
+                       "accuracy":  0,
+                       "range":  0.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "attack_up",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              },
+                                              {
+                                                  "type":  "speed_up_2",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "hits_friendlies":  true,
+                       "particles":  {
+                                         "type":  "enchanted_hit",
+                                         "count":  2
+                                     }
+                   }
+               ]
+}

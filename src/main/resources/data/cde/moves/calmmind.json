@@ -1,0 +1,29 @@
+{
+    "cobblemon_move_id":  "cobblemon:calmmind",
+    "cooldown_turns":  4.0,
+    "phases":  [
+                   {
+                       "attack_type":  "SELF",
+                       "base_power":  0,
+                       "accuracy":  0,
+                       "range":  0.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "special_attack_up",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              },
+											  {
+                                                  "type":  "special_defense_up",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "hits_friendlies":  true,
+                       "particles":  {
+                                         "type":  "enchanted_hit",
+                                         "count":  2
+                                     }
+                   }
+               ]
+}

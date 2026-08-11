@@ -1,0 +1,65 @@
+{
+    "cobblemon_move_id":  "cobblemon:howl",
+    "cooldown_turns":  4.0,
+    "phases":  [
+                   {
+                       "attack_type":  "SELF",
+                       "base_power":  0,
+                       "accuracy":  0,
+                       "range":  0.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "attack_up",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "hits_friendlies":  true,
+					   "is_sound_move": true,
+                       "particles":  {
+                                         "type":  "enchanted_hit",
+                                         "count":  2
+                                     }
+                   },
+				   {
+					   "attack_type":  "WAVE",
+					   "base_power":  0,
+                       "accuracy":  0,
+                       "range":  6.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "attack_up",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "hits_friendlies":  true,
+					   "multiple_targets": true,
+					   "is_sound_move": true,
+                       "particles":  {
+                                         "type":  "enchanted_hit",
+                                         "count":  2
+                                     }
+                   },
+				   {
+					   "attack_type":  "WAVE",
+					   "base_power":  0,
+                       "accuracy":  0,
+                       "range":  6.0,
+                       "status_effects":  [
+                                              {
+                                                  "type":  "attack_down",
+                                                  "duration_turns":  20.0,
+                                                  "chance": 100
+                                              }
+                                          ],
+                       "hits_friendlies":  false,
+					   "multiple_targets": true,
+					   "is_sound_move": true,
+                       "particles":  {
+                                         "type":  "enchanted_hit",
+                                         "count":  2
+                                     }
+                   }
+               ]
+}
