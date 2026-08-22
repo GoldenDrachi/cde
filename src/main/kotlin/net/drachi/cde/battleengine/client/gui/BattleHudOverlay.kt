@@ -21,7 +21,16 @@ object BattleHudOverlay : HudRenderCallback {
     // We can use default Minecraft widgets or custom textures. For the POC, we'll draw simple rectangles.
     private val WIDGET_TEXTURE = ResourceLocation.withDefaultNamespace("textures/gui/widgets.png")
     private val POWDER_SNOW_OUTLINE = ResourceLocation.withDefaultNamespace("textures/misc/powder_snow_outline.png")
-
+    private val STAT_TRANSLATION_KEYS = mapOf(
+        "attack" to "cdbe.hud.stat.attack",
+        "special_attack" to "cdbe.hud.stat.special_attack",
+        "defense" to "cdbe.hud.stat.defense",
+        "special_defense" to "cdbe.hud.stat.special_defense",
+        "speed" to "cdbe.hud.stat.speed",
+        "accuracy" to "cdbe.hud.stat.accuracy",
+        "evasion" to "cdbe.hud.stat.evasion"
+    )
+    
     override fun onHudRender(drawContext: GuiGraphics, tickDelta: net.minecraft.client.DeltaTracker) {
         val client = Minecraft.getInstance()
         if (client.player == null) return
@@ -174,7 +183,7 @@ object BattleHudOverlay : HudRenderCallback {
                     drawContext.drawString(client.font, Component.literal("[$statName]"), startX, statY, color)
                     statY -= 12
                 } else {
-                    val formattedName = if (statName.length >= 3) statName.substring(0, 3).uppercase() else statName.uppercase()
+                    val formattedName = getStatDisplayName(statName)
                     val sign = if (stage > 0) "+" else ""
                     val text = "[$formattedName $sign$stage]"
                     val color = if (stage > 0) 0x00FF00 else 0xFF0000
@@ -226,7 +235,7 @@ object BattleHudOverlay : HudRenderCallback {
                             }
                             statStrings.add(Pair("[$statName] ", c))
                         } else {
-                            val formattedName = if (statName.length >= 3) statName.substring(0, 3).uppercase() else statName.uppercase()
+                            val formattedName = getStatDisplayName(statName)
                             val sign = if (stage > 0) "+" else ""
                             statStrings.add(Pair("[$formattedName $sign$stage] ", if (stage > 0) 0x00FF00 else 0xFF0000))
                         }
@@ -250,6 +259,12 @@ object BattleHudOverlay : HudRenderCallback {
                 }
             }
         }
+    }
+
+
+    private fun getStatDisplayName(statName: String): String {
+        val translationKey = STAT_TRANSLATION_KEYS[statName] ?: return statName
+        return Component.translatable(translationKey).string
     }
     
     private fun getTypeColor(type: String): Int {
